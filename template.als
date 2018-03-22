@@ -6,27 +6,105 @@
  * make them extend other signatures.
  */
 
-sig Athlete { ... }
+sig Discipline { 
+	containsEvent: some Event //not shared
+}
 
-sig Discipline { ... }
 
-sig Event { ... }
 
-sig Location { ... }
+sig Event {
+	containsPhase: some Phase, // not shared
+	//participant: some Team // three or more
+}
 
-sig Medal { ... }
+sig Phase { 
+	next: lone Phase, // ?
+	containsPerformance: some Performance // not shared
+}
 
-sig Performance { ... } 
+sig Performance {
+	location: one Location, // can be shared
+	startTime: one Time, // can be shared
+	stopTime: one Time, // "
+	score: one Score, // not shared
+	// team ?
+} 
 
-sig Phase { ... }
+sig Score { }
 
-sig Team { ... }
+sig Location { }
 
-sig Time { ... }
+sig Time {
+	next: lone Time // ?
+}
+
+sig Team { 
+	participatesIn: some Event,
+	// ? playsIn: set Performance
+	represents: one Country,
+	// won: set Medal,
+	member: some Athlete
+}
+
+// Athletes
+abstract sig Athlete {
+	citizenOf: some Country
+}
+
+sig FemaleAthlete extends Athlete {}
+sig MaleAthlete extends Athlete {}
+
+sig Country {}
+
+
+
+
+
+
+// Medals
+abstract sig Medal { 
+	forEvent: one Event,
+	forTeam: one Team
+}
+
+
+sig GoldMedal extends Medal {}
+sig SilverMedal extends Medal {}
+sig BronzeMedal extends Medal {}
+
+/* 
+	FACTS
+*/
+
+// not shared Facts - Rauten
+fact {
+	all disj d1, d2: Discipline | all e: Event | e in d1.containsEvent implies e not in d2.containsEvent
+}
+fact {
+	all disj e1, e2: Event | all p: Phase | p in e1.containsPhase implies p not in e2.containsPhase
+}
+fact {
+	all disj e1, e2: Phase | all p: Performance | p in e1.containsPerformance implies p not in e2.containsPerformance
+}
+fact {
+	all disj p1, p2: Performance | p1.score != p2.score
+}
+
+// multiplicities
+fact minThreeMedalsPerEvent {
+	all e:Event | #{ m: Medal | e in m.forEvent } >= 3
+}
+fact minThreeTeamsPerEvent {
+	all e:Event | #{ t: Team | e in t.participatesIn } >= 3
+}
+// fact
+
+pred show {}
+run show for 10
 
 /*
  * Predicates
- */
+ 
 
 // True iff t1 is strictly before t2.
 pred isBefore[t1, t2: Time] { ... }
@@ -48,7 +126,7 @@ pred isAmongBest[t: Team, p: Phase] { ... }
 
 /*
  * Functions
- */
+ 
 
 // Returns all the events offered by the discipline d.
 fun getEvents[d: Discipline] : set Event { ... } 
@@ -82,3 +160,6 @@ fun getMembers[t: Team] : set Athlete { ... }
 
 // Returns the team which won the medal m.
 fun getWinner[m: Medal] : Team { ... }
+
+
+*/
