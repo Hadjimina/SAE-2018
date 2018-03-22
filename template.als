@@ -22,6 +22,7 @@ sig Phase {
 	containsPerformance: some Performance // not shared
 }
 
+
 sig Performance {
 	location: one Location, // can be shared
 	startTime: one Time, // can be shared
@@ -52,6 +53,7 @@ sig Team {
 abstract sig Athlete {
 	citizenOf: some Country
 }
+// only for testing: fact { #Athlete.citizenOf >= 2}
 
 sig FemaleAthlete extends Athlete {}
 sig MaleAthlete extends Athlete {}
@@ -109,26 +111,41 @@ fact minOneTeamPerAthlete {
 }
 
 fact minOnePerformancePerLocation {
-	all l:Location | #{ p:Performance| l in p.location } >= 1
+	all l:Location | some p:Performance | l in p.location
 }
 
-fact minOnePerformancePerStopTime {
-	all t:Time | #{ p:Performance| t in p.stopTime } >= 1
+fact noLoseTime {
+	all t:Time | some p:Performance | t in p.stopTime || t in p.startTime
 }
 
-fact minOnePerformancePerStartTime {
-	all t:Time | #{ p:Performance| t in p.startTime } >= 1
+// don't need?
+assert maxOneTimeAfterOrBeforeTime{
+//	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
 }
+//check maxOneTimeAfterOrBeforeTime
 
-fact maxOneTimeAfterOrBeforeTime{
-	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
+
+// Phases
+fact noCircle_Phases {
+  all p:Phase | p not in p.^next
 }
-
+fact onlyOnePredecessor_Phases {
+	all p:Phase | #{ p1:Phase | p1.next = p } <= 1
+}
+fact oneEventOnePhase {
+	all p:Phase | one e: Event | p in e.containsPhase
+}
+fact  {
+	all e:Event | all p:Phase | p in e.containsPhase => p.next in e.containsPhase
+}
+fact chain_Phase{ // Quesiton asked
+	
+}
 
 
 // logical facts
 
-fact timeNotNextrItself{
+fact timeNotNextrItselfTrClosure{
 	no t: Time | t in t.^next
 }
 
@@ -136,28 +153,30 @@ fact noTimeLone{
 	(one t:Time | no t.next) && (one t1:Time | all t2:Time | (t1 != t2) => t2.next != t1 ) 
 }
 
-fact citizenOfRepresentingCountry{
-	all a:Athlete | all t:Team |  all c:Country |  ( a in t.member  &&  c in t.represents ) => c = a.citizenOf 
+fact citizenOfRepresentingCountry {
+	all a:Athlete | all t: Team | a in t.member => t.represents in a.citizenOf 
 }
 
 
+// IN CONFLICT !!!
 fact noLocationUsedConcurrently{
-	all disj p0,p1:Performance | p0.location = p1.location =>   p1.startTime in p0.stopTime.^next 
+	all disj p0,p1:Performance | p0.location = p1.location => p1.startTime in p0.stopTime.*next 
 }
 
-fact notSameStartAndStopTimeForPerformance{
-	all p:Performance | p.startTime != p.stopTime
+fact notSameStartAndStopTimeForPerformance{ // QUESITON: allos start and stop at same time?
+	all p:Performance | p.stopTime in p.startTime.*next
 }
 
-/* WHY NO WORK ?
-fact startTimeBeforeEndTime{
-	all p:Performance | p.stopTime in p.startTime.^next
-}*/
+fact testLocationSharing{
+	some disj p1,p2:Performance | p1.location = p2.location
+}
 
 // fact
 
+/* Figure Skating */
+
 pred show {}
-run show for 5
+run show for 20 but exactly 3 Time, exactly 2 Location, exactly 3 Performance
 
 /*
  * Predicates
