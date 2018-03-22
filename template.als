@@ -27,7 +27,7 @@ sig Performance {
 	startTime: one Time, // can be shared
 	stopTime: one Time, // "
 	score: one Score, // not shared
-	// team ?
+	teams: some Team
 } 
 
 sig Score { }
@@ -40,10 +40,12 @@ sig Time {
 
 sig Team { 
 	participatesIn: some Event,
-	// ? playsIn: set Performance
 	represents: one Country,
-	// won: set Medal,
 	member: some Athlete
+
+//probably to delete
+	// ? playsIn: set Performance
+	// won: set Medal,
 }
 
 // Athletes
@@ -55,10 +57,6 @@ sig FemaleAthlete extends Athlete {}
 sig MaleAthlete extends Athlete {}
 
 sig Country {}
-
-
-
-
 
 
 // Medals
@@ -97,10 +95,69 @@ fact minThreeMedalsPerEvent {
 fact minThreeTeamsPerEvent {
 	all e:Event | #{ t: Team | e in t.participatesIn } >= 3
 }
+
+fact minOneAthletePerCountry {
+	all c:Country | #{ a: Athlete | c in a.citizenOf } >= 1
+}
+
+fact minOneTeamPerAthlete {
+	all a:Athlete | #{ t: Team | a in t.member } >= 1
+}
+
+fact minOneTeamPerAthlete {
+	all a:Athlete | #{ t: Team | a in t.member } >= 1
+}
+
+fact minOnePerformancePerLocation {
+	all l:Location | #{ p:Performance| l in p.location } >= 1
+}
+
+fact minOnePerformancePerStopTime {
+	all t:Time | #{ p:Performance| t in p.stopTime } >= 1
+}
+
+fact minOnePerformancePerStartTime {
+	all t:Time | #{ p:Performance| t in p.startTime } >= 1
+}
+
+fact maxOneTimeAfterOrBeforeTime{
+	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
+}
+
+
+
+// logical facts
+
+fact timeNotNextrItself{
+	no t: Time | t in t.^next
+}
+
+fact noTimeLone{
+	(one t:Time | no t.next) && (one t1:Time | all t2:Time | (t1 != t2) => t2.next != t1 ) 
+}
+
+fact citizenOfRepresentingCountry{
+	all a:Athlete | all t:Team |  all c:Country |  ( a in t.member  &&  c in t.represents ) => c = a.citizenOf 
+}
+
+
+fact noLocationUsedConcurrently{
+	all disj p0,p1:Performance | p0.location = p1.location =>   p1.startTime in p0.stopTime.^next 
+}
+
+fact notSameStartAndStopTimeForPerformance{
+	all p:Performance | p.startTime != p.stopTime
+}
+
+/* WHY NO WORK ?
+fact startTimeBeforeEndTime{
+	all p:Performance | p.stopTime in p.startTime.^next
+}*/
+
 // fact
 
 pred show {}
-run show for 10
+run show for 5
 
 /*
  * Predicates
