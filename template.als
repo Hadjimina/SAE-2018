@@ -10,8 +10,6 @@ sig Discipline {
 	containsEvent: some Event //not shared
 }
 
-
-
 sig Event {
 	containsPhase: some Phase, // not shared
 	//participant: some Team // three or more
@@ -80,9 +78,12 @@ sig BronzeMedal extends Medal {}
 fact {
 	all disj d1, d2: Discipline | all e: Event | e in d1.containsEvent implies e not in d2.containsEvent
 }
-fact {
+/* was already implied
+assert noSharedPhase {
 	all disj e1, e2: Event | all p: Phase | p in e1.containsPhase implies p not in e2.containsPhase
 }
+check noSharedPhase
+*/
 fact {
 	all disj e1, e2: Phase | all p: Performance | p in e1.containsPerformance implies p not in e2.containsPerformance
 }
@@ -90,10 +91,18 @@ fact {
 	all disj p1, p2: Performance | p1.score != p2.score
 }
 
-// multiplicities
-fact minThreeMedalsPerEvent {
+
+/* 
+	MULITPLICITIES
+*/ 
+
+/* was already implied
+assert minThreeMedalsPerEvent {
 	all e:Event | #{ m: Medal | e in m.forEvent } >= 3
 }
+check minThreeMedalsPerEvent
+*/
+
 fact minThreeTeamsPerEvent {
 	all e:Event | #{ t: Team | e in t.participatesIn } >= 3
 }
@@ -118,12 +127,17 @@ fact noLoseTime {
 	all t:Time | some p:Performance | t in p.stopTime || t in p.startTime
 }
 
-// don't need?
-assert maxOneTimeAfterOrBeforeTime{
-//	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
+fact minOnePerformancePerTeam {
+	all t: Team | some p: Performance | t in p.teams
 }
-//check maxOneTimeAfterOrBeforeTime
 
+
+/* don't need?
+fact maxOneTimeAfterOrBeforeTime{
+	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
+}
+check maxOneTimeAfterOrBeforeTime
+*/
 
 // Phases
 fact noCircle_Phases {
@@ -132,20 +146,22 @@ fact noCircle_Phases {
 fact onlyOnePredecessor_Phases {
 	all p:Phase | #{ p1:Phase | p1.next = p } <= 1
 }
-fact oneEventOnePhase {
+fact noLoneNoShared_Phases {
 	all p:Phase | one e: Event | p in e.containsPhase
 }
-fact  {
+fact allPhasesInChainInSameEvent {
 	all e:Event | all p:Phase | p in e.containsPhase => p.next in e.containsPhase
 }
-fact chain_Phase{ // Quesiton asked
-	
+
+//also implies that every Event has at least one phase
+fact oneLast_Phase{
+	all e:Event | one p:Phase | p in e.containsPhase && no p.next
 }
 
 
-// logical facts
+// Time
 
-fact timeNotNextrItselfTrClosure{
+fact noCircle_Time{
 	no t: Time | t in t.^next
 }
 
@@ -157,48 +173,136 @@ fact citizenOfRepresentingCountry {
 	all a:Athlete | all t: Team | a in t.member => t.represents in a.citizenOf 
 }
 
-
-// IN CONFLICT !!!
 fact noLocationUsedConcurrently{
-	all disj p0,p1:Performance | p0.location = p1.location => p1.startTime in p0.stopTime.*next 
+	all disj p0,p1:Performance | p0.location = p1.location => isBefore[p0.stopTime, p1.startTime] //p1.startTime in p0.stopTime.*next 
+}
+fact noTeamUsedConcurrently {
+	all disj p0,p1:Performance | all t: Team | t in p0.teams && t in p1.teams => isBefore[p0.stopTime, p1.startTime] //in p0.stopTime.*next
 }
 
-fact notSameStartAndStopTimeForPerformance{ // QUESITON: allos start and stop at same time?
-	all p:Performance | p.stopTime in p.startTime.*next
+fact notSameStartAndStopTimeForPerformance {
+//	all p:Performance | isBefore[p.startTime, p.stopTime] // p.stopTime in p.startTime.^next
+}
+/*
+fact phasePerformanceOrder {
+	all disj p1, p2: Phase | all disj prf1, prf2: Performance | 
+		phaseIsBefore[p1, p2] && prf1 in p1.containsPerformance && prf2 in p2.containsPerformance
+		=>isBefore[prf1.stopTime, prf2.startTime]
+}
+*/
+
+
+
+// Medals
+
+fact fromMail {
+	all e: Event | 
+	//Case 1
+	(	#{ m: GoldMedal | e in m.forEvent} = 1 && #{ m: SilverMedal | e in m.forEvent} = 1 && #{ m: BronzeMedal | e in m.forEvent} >= 1 )
+	||
+	//Case 2 
+	(	#{ m: GoldMedal | e in m.forEvent} = 1 && #{ m: SilverMedal | e in m.forEvent} >= 2 && #{ m: BronzeMedal | e in m.forEvent} = 0 )
+	||
+	//Case 3
+	(	#{ m: GoldMedal | e in m.forEvent} = 2 && #{ m: SilverMedal | e in m.forEvent} = 0 && #{ m: BronzeMedal | e in m.forEvent} >= 1 )
+	||
+	//Case 4
+	(	#{ m: GoldMedal | e in m.forEvent} >= 3 && #{ m: SilverMedal | e in m.forEvent} = 0 && #{ m: BronzeMedal | e in m.forEvent} = 0 )
+	
 }
 
-fact testLocationSharing{
-	some disj p1,p2:Performance | p1.location = p2.location
+fact MedalsForTeamsInEvent {
+	all m: Medal | all e: Event | all t: Team | e in m.forEvent && t in m.forTeam => e in t.participatesIn
+}
+
+fact onlyOneMedalperTeamEvent {
+	all e: Event | all t: Team | lone m:Medal | e in m.forEvent && e in t.participatesIn && t in m.forTeam
+}
+
+fact equalScoreEqualMedal {
+//	all e: Performance | all disj t1, t2: Team | t1 in e.teams && t2 in e.teams && t1.score.value = t2.score.value 
+}
+
+//Athletes
+fact noAthleteInTwoCountriesTeams {
+	no a:Athlete | some disj t1, t2:Team | a in t1.member && a in t2.member && t1.represents != t2.represents
+}
+fact noAthleteInTwoTeamsPerEvent {
+	no a:Athlete | some disj t1, t2:Team | a in t1.member && a in t2.member && (t1.participatesIn & t2.participatesIn) = none
+}
+
+// Teams
+fact noTeamsInDifferentDisciplines {
+	all d1, d2: Discipline | all t: Team | teamInDiscipline[t, d1] && teamInDiscipline[t, d2] => d1 = d2
+}
+
+fact onlyThreeTeamsPerDisciplinePerCountry {
+	all c: Country | all d: Discipline | #{ t: Team | c in t.represents && teamInDiscipline[t, d] } <= 3
+}
+
+
+
+// For testing
+
+
+fact testLocationSharing { // SLOWING DOWN ENORMOUSLY // OVERRESTRICTED SOMEWHERE ??
+//	some disj p1,p2:Performance | p1.location = p2.location
+}
+fact {
+//	all a:Athlete | some disj t1, t2: Team | a in t1.member && a in t2.member
+} 
+fact {
+//	no c: Country | no t: Team | c in t.represents
 }
 
 // fact
 
 /* Figure Skating */
 
-pred show {}
-run show for 20 but exactly 3 Time, exactly 2 Location, exactly 3 Performance
+// ONLY FOR TESTING!!!
 
-/*
- * Predicates
- 
+
+fact {
+	some d: Discipline | #d.containsEvent > 1
+}
+
+pred show {
+	#Event = 1 
+//	#Location < 5
+//	#Time > 1 &&
+//	#Performance < 5
+//	#Discipline = 1
+}
+run show for 15  //but exactly 3 Time, exactly 2 Location, exactly 3 Performance
+
+/* 
+	OUR Predicates
+*/
+
+pred teamInDiscipline[t: Team, d: Discipline] { t.participatesIn & d.containsEvent != none }
+
+
+
+// Predicates
+
 
 // True iff t1 is strictly before t2.
-pred isBefore[t1, t2: Time] { ... }
+pred isBefore[t1, t2: Time] { t2 in t1.^next }
 
 // True iff p1 is strictly before p2.
-pred phaseIsBefore[p1, p2: Phase] { ... }
+pred phaseIsBefore[p1, p2: Phase] { p2 in p1.^next }
 
 // True iff m is a gold medal.
-pred isGoldMedal[m : Medal] { ... }
+pred isGoldMedal[m : Medal] { m in GoldMedal }
 
 // True iff m is a silver medal.
-pred isSilverMedal[m : Medal] { ... }
+pred isSilverMedal[m : Medal] { m in SilverMedal }
 
 // True iff m is a bronze medal.
-pred isBronzeMedal[m: Medal] { ... }
+pred isBronzeMedal[m: Medal] { m in BronzeMedal }
 
 // True iff t is among the best teams in phase p.
-pred isAmongBest[t: Team, p: Phase] { ... }
+//pred isAmongBest[t: Team, p: Phase] { ... }
 
 /*
  * Functions
