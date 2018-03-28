@@ -306,7 +306,7 @@ pred isBronzeMedal[m: Medal] { m in BronzeMedal }
 
 /*
  * Functions
- 
+
 
 // Returns all the events offered by the discipline d.
 fun getEvents[d: Discipline] : set Event { ... } 
@@ -321,25 +321,25 @@ fun getPhases[e: Event] : set Phase { ... }
 fun getPerformances[p: Phase] : set Performance { ... }
 
 // Returns the set of medals handed out for the event e.
-fun getMedals[e: Event] : set Medal { ... }
+fun getMedals[e: Event] : set Medal {  }
 
 // Returns the start time of the performance p.
-fun getStart[p : Performance] : Time { ... }
+fun getStart[p : Performance] : Time { p.startTime }
 
 // Returns the end time of the performance p.
-fun getEnd[p: Performance] : Time { ... }
+fun getEnd[p: Performance] : Time { p.endTime }
 
 // Returns the location of the performance p.
-fun getLocation[p: Performance] : Location { ... } 
+fun getLocation[p: Performance] : Location { p.location } 
 
 // Returns all the teams which paricipate in the performance p.
-fun getParticipants[p: Performance] : set Team { ... }
+fun getParticipants[p: Performance] : set Team { p.teams }
 
 // Returns all the athletes which belong to the team t.
-fun getMembers[t: Team] : set Athlete { ... }
+fun getMembers[t: Team] : set Athlete { t.member }
 
 // Returns the team which won the medal m.
-fun getWinner[m: Medal] : Team { ... }
+//fun getWinner[m: Medal] : Team { ... }
 
 
 */
