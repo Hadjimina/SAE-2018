@@ -10,6 +10,8 @@ sig Discipline {
 	containsEvent: some Event //not shared
 }
 
+
+
 sig Event {
 	containsPhase: some Phase, // not shared
 	//participant: some Team // three or more
@@ -65,7 +67,6 @@ abstract sig Medal {
 	forTeam: one Team
 }
 
-
 sig GoldMedal extends Medal {}
 sig SilverMedal extends Medal {}
 sig BronzeMedal extends Medal {}
@@ -78,12 +79,9 @@ sig BronzeMedal extends Medal {}
 fact {
 	all disj d1, d2: Discipline | all e: Event | e in d1.containsEvent implies e not in d2.containsEvent
 }
-/* was already implied
-assert noSharedPhase {
+fact {
 	all disj e1, e2: Event | all p: Phase | p in e1.containsPhase implies p not in e2.containsPhase
 }
-check noSharedPhase
-*/
 fact {
 	all disj e1, e2: Phase | all p: Performance | p in e1.containsPerformance implies p not in e2.containsPerformance
 }
@@ -91,18 +89,13 @@ fact {
 	all disj p1, p2: Performance | p1.score != p2.score
 }
 
-
-/* 
-	MULITPLICITIES
-*/ 
-
-/* was already implied
-assert minThreeMedalsPerEvent {
-	all e:Event | #{ m: Medal | e in m.forEvent } >= 3
-}
-check minThreeMedalsPerEvent
+/*
+ 		Multiplicities
 */
 
+fact minThreeMedalsPerEvent {
+	all e:Event | #{ m: Medal | e in m.forEvent } >= 3
+}
 fact minThreeTeamsPerEvent {
 	all e:Event | #{ t: Team | e in t.participatesIn } >= 3
 }
@@ -131,17 +124,19 @@ fact minOnePerformancePerTeam {
 	all t: Team | some p: Performance | t in p.teams
 }
 
-
-/* don't need?
-fact maxOneTimeAfterOrBeforeTime{
-	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
+// don't need?
+assert maxOneTimeAfterOrBeforeTime{
+//	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
 }
-check maxOneTimeAfterOrBeforeTime
-*/
+//check maxOneTimeAfterOrBeforeTime
+
 
 // Phases
 fact noCircle_Phases {
   all p:Phase | p not in p.^next
+}
+fact onlyOnePredecessor_Phases {
+	all p:Phase | #{ p1:Phase | p1.next = p } <= 1
 }
 fact onlyOnePredecessor_Phases {
 	all p:Phase | #{ p1:Phase | p1.next = p } <= 1
@@ -153,13 +148,11 @@ fact allPhasesInChainInSameEvent {
 	all e:Event | all p:Phase | p in e.containsPhase => p.next in e.containsPhase
 }
 
-//also implies that every Event has at least one phase
 fact oneLast_Phase{
 	all e:Event | one p:Phase | p in e.containsPhase && no p.next
 }
 
-
-// Time
+// logical facts
 
 fact noCircle_Time{
 	no t: Time | t in t.^next
@@ -173,6 +166,7 @@ fact citizenOfRepresentingCountry {
 	all a:Athlete | all t: Team | a in t.member => t.represents in a.citizenOf 
 }
 
+
 fact noLocationUsedConcurrently{
 	all disj p0,p1:Performance | p0.location = p1.location => isBefore[p0.stopTime, p1.startTime] //p1.startTime in p0.stopTime.*next 
 }
@@ -180,18 +174,17 @@ fact noTeamUsedConcurrently {
 	all disj p0,p1:Performance | all t: Team | t in p0.teams && t in p1.teams => isBefore[p0.stopTime, p1.startTime] //in p0.stopTime.*next
 }
 
-// SLOWS DOWN
 fact notSameStartAndStopTimeForPerformance {
-	// all p:Performance | isBefore[p.startTime, p.stopTime] 
+//	all p:Performance | isBefore[p.startTime, p.stopTime] // p.stopTime in p.startTime.^next
 }
 
+/*
 fact phasePerformanceOrder {
 	all disj p1, p2: Phase | all disj prf1, prf2: Performance | 
 		phaseIsBefore[p1, p2] && prf1 in p1.containsPerformance && prf2 in p2.containsPerformance
 		=>isBefore[prf1.stopTime, prf2.startTime]
 }
-
-
+*/
 
 
 // Medals
@@ -220,9 +213,10 @@ fact onlyOneMedalperTeamEvent {
 	all e: Event | all t: Team | lone m:Medal | e in m.forEvent && e in t.participatesIn && t in m.forTeam
 }
 
-fact equalScoreEqualMedal { // What for answer maybe not need for us b.c. different score implementation in figure skating
+fact equalScoreEqualMedal {
 //	all e: Performance | all disj t1, t2: Team | t1 in e.teams && t2 in e.teams && t1.score.value = t2.score.value 
 }
+
 
 //Athletes
 fact noAthleteInTwoCountriesTeams {
@@ -241,101 +235,15 @@ fact onlyThreeTeamsPerDisciplinePerCountry {
 	all c: Country | all d: Discipline | #{ t: Team | c in t.represents && teamInDiscipline[t, d] } <= 3
 }
 
-//Score
-fact noScoreWOPerformance{
-	all s:Score | some p:Performance | p.score = s
-}
-
-
-// For testing
-fact testLocationSharing { // SLOWING DOWN ENORMOUSLY // OVERRESTRICTED SOMEWHERE ??
-//	some disj p1,p2:Performance | p1.location = p2.location
-}
-fact {
-//	all a:Athlete | some disj t1, t2: Team | a in t1.member && a in t2.member
-} 
-fact {
-//	no c: Country | no t: Team | c in t.represents
-}
 
 fact {
-	//	some d: Discipline | #d.containsEvent > 1
+	some d: Discipline | #d.containsEvent > 1
 }
 
+/* Figure Skating */
 
-
-/* 
-
-		Figure Skating 
-
-*/
-
-sig IceDancing extends Event {}
-
-sig ShortProgram extends Phase{}
-
-sig FreeSkatingProgram extends Phase{}
-
-sig FigureSkatingScore extends Score{
-	TechScore: one TechnicalScore,
-	PresScore: one PresentationScore
-}
-
-sig TechnicalScore{}
-
-sig PresentationScore{}
-
-fact onlyPairsInIceDancing { // use sig instead ?
-	all t:Team | all e:Event | one m:MaleAthlete | one f:FemaleAthlete |  e in IceDancing && e in t.participatesIn 
-	=> #t.member = 2 && m in t.member && f in t.member
-}
-
-
-fact IceDancingOnlyInOneDiscipline{	// TODO
-//	all i2:IceDancing | all d1, d2:Discipline | i2 in d1.containsEvent && i2 in d2.containsEvent && d1 = d2
-//	all i:IceDancing   | # {d:Discipline| i in d.containsEvent } = 1
-}
-
-/* impled by IceDancingOnlyInOneDisciplinem and onlyThreeTeamsPerDisciplinePerCountry
-fact OnlyThreeTeamsPerCountry{
-	all e:Event | all t:Team | all c:Country | c in t.represents && e in t.participatesIn && e in IceDancing 
-}*/
-
-
-fact TwentyTwoPairsInShortProgram{ //TODO
-	//all t:Team | all s:ShortProgram | all i:IceDancing |  i in t.participatesIn && s in i.containsPhase  
-	//all i:IceDancing | all sp:ShortProgram | sp in i.containsPhase => #{t:Team | t in  sp.containsPerformance.teams} = 22
-}
-
-fact allPhasesOfFigureSkatingFreeOrShort{
-	all p:Phase | all i:IceDancing | p in i.containsPhase => (p in FreeSkatingProgram || p in ShortProgram)
-}
-fact ShortAndFreeOnlyForIceDancing{  // inverse of top
-	all p:Phase | all i:IceDancing |  not (p in i.containsPhase) =>  not (p in FreeSkatingProgram || p in ShortProgram)
-}
-
-fact allScoresOfIceDancingAreTechOrPres{
-	all s:Score | all p:Performance|(p in ShortProgram.containsPerformance || p in FreeSkatingProgram.containsPerformance) && s = p.score
-	=> s in FigureSkatingScore
-}
-fact TechAndPresScoreOnlyForFS{ // inverse of top
-	all s:Score | all p:Performance| not (p in ShortProgram.containsPerformance || p in FreeSkatingProgram.containsPerformance) && s = p.score
-	=> not( s in FigureSkatingScore)
-}
-
-
-//fact EvIceDancingEventExactlyOneShortProgramAndOneFreeSkating{} //TODO
-
-
-pred show { //EVENT HAS TO BE >1
-// 	#Event = 1 
-//	#Location < 5
-//	#Time > 1 &&
-//	#Performance < 5
-//	#Discipline = 1
-}
-
-run show for 15 but exactly 2 Discipline, exactly 1 IceDancing, exactly 3 Performance
+pred show {}
+run show for 20
 
 /* 
 	OUR Predicates
@@ -369,28 +277,27 @@ pred isBronzeMedal[m: Medal] { m in BronzeMedal }
 /*
  * Functions
 
-*/
 
 // Returns all the events offered by the discipline d.
-fun getEvents[d: Discipline] : set Event { d.containsEvent }  //PMH not tested
+fun getEvents[d: Discipline] : set Event { ... } 
 
 // Returns all the teams which participate in the event e.
-fun getEventParticipants[e: Event] : set Team {  {t:Team | t in getPerformances[getPhases[e]].teams}} //PMH not tested
+fun getEventParticipants[e: Event] : set Team { ... }
 
 // Returns all the phases of the event e.
-fun getPhases[e: Event] : set Phase { e.containsPhase } //PMH not tested
+fun getPhases[e: Event] : set Phase { ... }
 
 // Returns all the performances which take place within the phase p.
-fun getPerformances[p: Phase] : set Performance { p.containsPerformance }//PMH not tested
+fun getPerformances[p: Phase] : set Performance { ... }
 
 // Returns the set of medals handed out for the event e.
-fun getMedals[e: Event] : set Medal { {m:Medal | m.forEvent = e} } //PMH not tested
+fun getMedals[e: Event] : set Medal {  }
 
 // Returns the start time of the performance p.
 fun getStart[p : Performance] : Time { p.startTime }
 
 // Returns the end time of the performance p.
-fun getEnd[p: Performance] : Time { p.stopTime }
+fun getEnd[p: Performance] : Time { p.endTime }
 
 // Returns the location of the performance p.
 fun getLocation[p: Performance] : Location { p.location } 
@@ -404,3 +311,5 @@ fun getMembers[t: Team] : set Athlete { t.member }
 // Returns the team which won the medal m.
 //fun getWinner[m: Medal] : Team { ... }
 
+
+*/
