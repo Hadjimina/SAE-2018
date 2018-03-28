@@ -131,6 +131,15 @@ fact minOnePerformancePerTeam {
 	all t: Team | some p: Performance | t in p.teams
 }
 
+/*
+fact noPhaseWithoutEvent {
+	no p: Phase | no e: Event | p in e.containsPhase
+}
+
+fact noEventWithoutDiscipline {
+	no e: Event | no d: Discipline | e in d.containsEvent 
+}
+*/
 
 /* don't need?
 fact maxOneTimeAfterOrBeforeTime{
@@ -307,13 +316,12 @@ fact OnlyThreeTeamsPerCountry{
 }*/
 
 
-fact TwentyTwoPairsInShortProgram{ //TODO
-	//all t:Team | all s:ShortProgram | all i:IceDancing |  i in t.participatesIn && s in i.containsPhase  
+fact TwentyTwoPairsInShortProgram{ 
  	all sp:ShortProgram | #{ t:Team | t in sp.participants} = 5
 }
 
 fact SixteenPairsInFreeSkatingProgram {
-	all f: FreeSkatingProgram | # { t: Team | t in f.participants } = 3
+	all f: FreeSkatingProgram | # { t: Team | t in f.participants } < 5
 }
 
 
@@ -354,7 +362,7 @@ fact FreeSkatingParticipantsSubsetOfShortProgram {
 //check test
 
 pred show { //EVENT HAS TO BE >1
-//	#Event = 3
+	#Event = 2
 //	#Location < 5
 //	#Time > 1 &&
 //	#Performance < 5
