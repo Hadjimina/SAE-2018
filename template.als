@@ -182,7 +182,7 @@ fact noTeamUsedConcurrently {
 
 // SLOWS DOWN
 fact notSameStartAndStopTimeForPerformance {
-	// all p:Performance | isBefore[p.startTime, p.stopTime] 
+//	 all p:Performance | isBefore[p.startTime, p.stopTime] 
 }
 
 fact phasePerformanceOrder {
@@ -249,7 +249,7 @@ fact noScoreWOPerformance{
 
 // For testing
 fact testLocationSharing { // SLOWING DOWN ENORMOUSLY // OVERRESTRICTED SOMEWHERE ??
-//	some disj p1,p2:Performance | p1.location = p2.location
+	some disj p1,p2:Performance | p1.location = p2.location
 }
 fact {
 //	all a:Athlete | some disj t1, t2: Team | a in t1.member && a in t2.member
@@ -269,12 +269,18 @@ fact {
 		Figure Skating 
 
 */
+one sig FigureSkating extends Discipline {}
+//{ #FigureSkating <= 1}
 
-sig IceDancing extends Event {}
+one sig IceDancing extends Event {}
 
-sig ShortProgram extends Phase{}
+sig ShortProgram extends FigureSkatingPhase {}
 
-sig FreeSkatingProgram extends Phase{}
+abstract sig FigureSkatingPhase extends Phase {
+	participants: some Team
+}
+
+sig FreeSkatingProgram extends FigureSkatingPhase {}
 
 sig FigureSkatingScore extends Score{
 	TechScore: one TechnicalScore,
@@ -290,11 +296,10 @@ fact onlyPairsInIceDancing { // use sig instead ?
 	=> #t.member = 2 && m in t.member && f in t.member
 }
 
-
-fact IceDancingOnlyInOneDiscipline{	// TODO
-//	all i2:IceDancing | all d1, d2:Discipline | i2 in d1.containsEvent && i2 in d2.containsEvent && d1 = d2
-//	all i:IceDancing   | # {d:Discipline| i in d.containsEvent } = 1
+fact IceDancingOnlyInFigureSkating{	
+	{IceDancing} = FigureSkating.containsEvent
 }
+
 
 /* impled by IceDancingOnlyInOneDisciplinem and onlyThreeTeamsPerDisciplinePerCountry
 fact OnlyThreeTeamsPerCountry{
@@ -304,14 +309,25 @@ fact OnlyThreeTeamsPerCountry{
 
 fact TwentyTwoPairsInShortProgram{ //TODO
 	//all t:Team | all s:ShortProgram | all i:IceDancing |  i in t.participatesIn && s in i.containsPhase  
-	//all i:IceDancing | all sp:ShortProgram | sp in i.containsPhase => #{t:Team | t in  sp.containsPerformance.teams} = 22
+ 	all sp:ShortProgram | #{ t:Team | t in sp.participants} = 5
 }
 
-fact allPhasesOfFigureSkatingFreeOrShort{
-	all p:Phase | all i:IceDancing | p in i.containsPhase => (p in FreeSkatingProgram || p in ShortProgram)
+fact SixteenPairsInFreeSkatingProgram {
+	all f: FreeSkatingProgram | # { t: Team | t in f.participants } = 3
 }
-fact ShortAndFreeOnlyForIceDancing{  // inverse of top
+
+
+
+fact oneShortOneFreePerIceEvent {
+	all i: IceDancing | one s: ShortProgram | one f: FreeSkatingProgram | s in i.containsPhase && f in i.containsPhase
+}
+// only correct because of one sig IceDancing Constraint
+fact ShortAndFreeOnlyForIceDancing{  
 	all p:Phase | all i:IceDancing |  not (p in i.containsPhase) =>  not (p in FreeSkatingProgram || p in ShortProgram)
+}
+
+fact ShortBeforeFree {
+	no f: FreeSkatingProgram | some s: ShortProgram | s in f.next
 }
 
 fact allScoresOfIceDancingAreTechOrPres{
@@ -323,19 +339,29 @@ fact TechAndPresScoreOnlyForFS{ // inverse of top
 	=> not( s in FigureSkatingScore)
 }
 
+// maybe good idea to make fact
+assert SameParticipantsInEventAndPerformance {
+	all e: Event | all p: Phase | p in e.containsPhase => ( all t: p.containsPerformance.teams | e in t.participatesIn )  
+}
 
-//fact EvIceDancingEventExactlyOneShortProgramAndOneFreeSkating{} //TODO
+fact SameParticipantsInPhaseAndPerformance{
+	all p: FigureSkatingPhase | p.containsPerformance.teams = p.participants
+}
 
+fact FreeSkatingParticipantsSubsetOfShortProgram {
+	all s: ShortProgram | all f: FreeSkatingProgram | f in s.next => f.participants in s.participants  
+}
+//check test
 
 pred show { //EVENT HAS TO BE >1
-// 	#Event = 1 
+//	#Event = 3
 //	#Location < 5
 //	#Time > 1 &&
 //	#Performance < 5
 //	#Discipline = 1
 }
 
-run show for 15 but exactly 2 Discipline, exactly 1 IceDancing, exactly 3 Performance
+run show for 20
 
 /* 
 	OUR Predicates
