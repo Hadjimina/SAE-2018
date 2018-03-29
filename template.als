@@ -371,10 +371,19 @@ fact TechScorePresScoreBetween0And6{
 }
 
 fun FS_fold [s: FigureSkatingScore]: Int { plus [s.TechScore, s.PresScore] }
-pred FS_better[s1 , s2 : FigureSkatingScore] { FS_fold[s1] > FS_fold[s2] }
-pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] }
 
-fun FS_Performance_Winner
+pred FS_better[s1 , s2 : FigureSkatingScore] { (FS_fold[s1] > FS_fold[s2]) || (FS_fold[s1] = FS_fold[s2] && s1.TechScore > s2.TechScore) }
+
+pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] && s1.TechScore = s2.TechScore  }
+
+fun FS_Phase_Best [i: Int, f: FigureSkatingPhase]: set Team {
+	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[(t.participatesIn & f.containsPerformance).score, s]  } >= i }
+}
+fun FS_Phase_first_i_Places [i: Int, f: FigureSkatingPhase]: set Team {
+	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[s, (t.participatesIn & f.containsPerformance).score]  } < i }
+}
+
+//check if teams are not in the same phase twice
 
 pred show { //EVENT HAS TO BE >1
 	#Discipline = 2 &&
