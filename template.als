@@ -30,7 +30,9 @@ sig Performance {
 	//winner: one Team
 } 
 
-sig Score { }
+sig Score { 
+	betterEqual: lone Score
+}
 
 sig Location { }
 
@@ -155,9 +157,23 @@ fact maxOneTimeAfterOrBeforeTime{
 check maxOneTimeAfterOrBeforeTime
 */
 
+// Makes chains of Scores per Phase
+fact noCircle_Score {
+	all s: Score | s not in s.^betterEqual
+}
+fact onlyOnePredecessor_Score {
+	all s:Score | #{ s1:Score | s1.next = s } <= 1
+}
+fact allScoresInChainInSamePhase {
+	all p:Phase | all s:Score | s in p.containsPerformance.score => s.betterEqual in p.containsPerformance.score
+}
+fact oneLast_Score {
+	all p:Phase | one s:Score | s in p.containsPerformance.score && no s.betterEqual
+}
+
 // Phases
 // Makes chains of phases per Event
-fact noCirclePhases {
+fact noCircle_Phases {
   	all p:Phase | p not in p.^next
 }
 fact onlyOnePredecessor_Phases {
@@ -370,22 +386,29 @@ fact TechScorePresScoreBetween0And6{
 	all s:FigureSkatingScore | (0 <= s.TechScore && s.TechScore <= 6) && (0 <= s.PresScore && s.PresScore <= 6)
 }
 
+fact RightOrderingScore {
+	all disj s1, s2: FigureSkatingScore | s2 in s1.betterEqual => FS_better[s1, s2] || FS_equal[s1, s2]
+}
+fact someDifferentScores {
+	some disj s1, s2: FigureSkatingScore | not FS_equal[s1, s2]
+}
+
 fun FS_fold [s: FigureSkatingScore]: Int { plus [s.TechScore, s.PresScore] }
 
 pred FS_better[s1 , s2 : FigureSkatingScore] { (FS_fold[s1] > FS_fold[s2]) || (FS_fold[s1] = FS_fold[s2] && s1.TechScore > s2.TechScore) }
 
 pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] && s1.TechScore = s2.TechScore  }
 
-fun FS_Phase_Best [i: Int, f: FigureSkatingPhase]: set Team {
-	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[(t.participatesIn & f.containsPerformance).score, s]  } >= i }
-}
-fun FS_Phase_first_i_Places [i: Int, f: FigureSkatingPhase]: set Team {
-	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[s, (t.participatesIn & f.containsPerformance).score]  } < i }
-}
+//fun FS_Phase_Best [i: Int, f: FigureSkatingPhase]: set Team {
+//	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[(t.participatesIn & f.containsPerformance).score, s]  } >= i }
+//}
+//fun FS_Phase_first_i_Places [i: Int, f: FigureSkatingPhase]: set Team {
+//	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[s, (t.participatesIn & f.containsPerformance).score]  } < i }
+//}
 
-fun FS_Phase_first_i_Teams [i: Int, f: FigureSkatingPhase]: set Teams {
-	{ t: f.participants | some t: Int | #{FS_Phase_first_i_Places[t, f] = t t < 16 }}
-}
+//fun FS_Phase_first_i_Teams [i: Int, f: FigureSkatingPhase]: set Team {
+//	{ t: f.participants | some t: Int | #{FS_Phase_first_i_Places[t, f] = t t < 16 }}
+//}
 
 //check if teams are not in the same phase twice
 
@@ -397,6 +420,7 @@ pred show { //EVENT HAS TO BE >1
 //	#Phase = 1
 //	#Location < 5
 //	#Time > 1 &&
+
 	#Performance < 7
 //	some p1, p2: Performance | isBefore[p2.startTime, p1.stopTime] && p1.startTime != p2.startTime
 	some p:FigureSkatingPhase | #p.containsPerformance > 1
