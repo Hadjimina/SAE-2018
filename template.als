@@ -92,15 +92,19 @@ fact CompositionPerformanceScore {
 }
 
 fact noPhaseWithoutEvent {
-//	all p: Phase | some e: Event | p in e.containsPhase
+	all p: Phase | some e: Event | p in e.containsPhase
 }
 
 fact noEventWithoutDiscipline {
-//	all e: Event | some d: Discipline | e in d.containsEvent 
+	all e: Event | some d: Discipline | e in d.containsEvent 
 }
 
 fact noScoreWithoutPerformance {
 	all s: Score | some p: Performance | s in p.score
+}
+
+fact noPerformanceWithoutPhase {
+	all p:Performance | some ph: Phase | p in ph.containsPerformance
 }
 
 
@@ -137,6 +141,7 @@ fact noLoseTime {
 fact minOnePerformancePerTeam {
 	all t: Team | some p: Performance | t in p.teams
 }
+
 
 
 /* was already implied //DELETE ? TODO
@@ -266,7 +271,7 @@ fact winnerOfLastPhaseGetsGold{ //TODO
 
 // For testing
 fact testLocationSharing { // SLOWING DOWN ENORMOUSLY // OVERRESTRICTED SOMEWHERE ??
-	// some disj p1,p2:Performance | p1.location = p2.location
+	some disj p1,p2:Performance | p1.location = p2.location
 }
 fact {
 //	all a:Athlete | some disj t1, t2: Team | a in t1.member && a in t2.member
@@ -285,7 +290,7 @@ fact {
 
 		Figure Skating 
 
-*/
+
 //Signatures required for the specific part
 one sig FigureSkating extends Discipline {}
 //{ #FigureSkating <= 1}
@@ -328,10 +333,10 @@ fact IceDancingOnlyInFigureSkating{
 	{IceDancing} = FigureSkating.containsEvent
 }
 
-/* impled by IceDancingOnlyInOneDisciplinem and onlyThreeTeamsPerDisciplinePerCountry //DELETE TODO
+// impled by IceDancingOnlyInOneDisciplinem and onlyThreeTeamsPerDisciplinePerCountry //DELETE TODO
 fact OnlyThreeTeamsPerCountry{
-	all e:Event | all t:Team | all c:Country | c in t.represents && e in t.participatesIn && e in IceDancing 
-}*/
+//	all e:Event | all t:Team | all c:Country | c in t.represents && e in t.participatesIn && e in IceDancing 
+}
 
 // Enforces constraint regarding the free and short program (i.e. phases)
 fact TwentyTwoPairsInShortProgram{ 
@@ -378,6 +383,7 @@ fact overallFSScore{
 	all s:FigureSkatingScore| s.score = plus [s.TechScore ][ s.PresScore]
 }
 
+*/
 
 // maybe good idea to make fact TODO
 assert SameParticipantsInEventAndPerformance {
