@@ -77,6 +77,7 @@ sig BronzeMedal extends Medal {}
 */
 
 // COMPOSITION
+
 //Enforces composition relation between Discipline and event
 fact CompositionDisciplineEvent{
 	all disj d1, d2: Discipline | all e: Event | e in d1.containsEvent implies e not in d2.containsEvent
@@ -90,7 +91,20 @@ fact CompositionPerformanceScore {
 	all disj p1, p2: Performance | p1.score != p2.score
 }
 
-/* was already implied //DELETE ?? TODO
+fact noPhaseWithoutEvent {
+//	all p: Phase | some e: Event | p in e.containsPhase
+}
+
+fact noEventWithoutDiscipline {
+//	all e: Event | some d: Discipline | e in d.containsEvent 
+}
+
+fact noScoreWithoutPerformance {
+	all s: Score | some p: Performance | s in p.score
+}
+
+
+/* was already implied 
 assert noSharedPhase {
 	all disj e1, e2: Event | all p: Phase | p in e1.containsPhase implies p not in e2.containsPhase
 }
@@ -124,16 +138,6 @@ fact minOnePerformancePerTeam {
 	all t: Team | some p: Performance | t in p.teams
 }
 
-/* TODO
-fact noPhaseWithoutEvent {
-	no p: Phase | no e: Event | p in e.containsPhase
-}*/
-
-/* // TODO
-fact noEventWithoutDiscipline {
-	no e: Event | no d: Discipline | e in d.containsEvent 
-}
-*/
 
 /* was already implied //DELETE ? TODO
 assert minThreeMedalsPerEvent {
@@ -187,13 +191,9 @@ fact noTeamUsedConcurrently {
 	all disj p0,p1:Performance | all t: Team | t in p0.teams && t in p1.teams => isBefore[p0.stopTime, p1.startTime]
 }
 
-fact lastTimeNotStart{ //why dafuq taking soooo long TODO
-//	all t:Time | all p:Performance | no t.next => not (t in p.startTime)
-}
-
-// SLOWS DOWN TODO
+// No Instance found, Too big of a model or to restrictive
 fact notSameStartAndStopTimeForPerformance {
-//	 all p:Performance | isBefore[p.startTime, p.stopTime] 
+	 all p:Performance | isBefore[p.startTime, p.stopTime] 
 }
 
 fact phasePerformanceOrder {
@@ -263,7 +263,7 @@ fact winnerOfLastPhaseGetsGold{ //TODO
 }
 
 
-// TODO DELTE TESTING STÖÖÖÖF
+
 // For testing
 fact testLocationSharing { // SLOWING DOWN ENORMOUSLY // OVERRESTRICTED SOMEWHERE ??
 	// some disj p1,p2:Performance | p1.location = p2.location
@@ -386,14 +386,14 @@ assert SameParticipantsInEventAndPerformance {
 
 
 pred show { //EVENT HAS TO BE >1
-	#Event = 3
+//	#Event = 3
 //	#Location < 5
 //	#Time > 1 &&
 //	#Performance < 5
 //	#Discipline = 1
 }
 
-run show for 20 
+run show for 10
 
 /* 
 	OUR Predicates
