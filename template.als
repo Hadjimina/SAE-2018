@@ -30,10 +30,7 @@ sig Performance {
 	//winner: one Team
 } 
 
-sig Score {
-	score:one Int,
-	forTeam: one Team
-}
+sig Score { }
 
 sig Location { }
 
@@ -118,7 +115,7 @@ check noSharedPhase
 
 /* 
 	MULITPLICITIES
-*/ 
+*/
 //Enoforces the multiplicities constraints from the UML model
 fact minThreeTeamsPerEvent {
 	all e:Event | #{ t: Team | e in t.participatesIn } >= 3
@@ -159,9 +156,9 @@ check maxOneTimeAfterOrBeforeTime
 */
 
 // Phases
-// Enfoces facts regarding the phases
+// Makes chains of phases per Event
 fact noCirclePhases {
-  all p:Phase | p not in p.^next
+  	all p:Phase | p not in p.^next
 }
 fact onlyOnePredecessor_Phases {
 	all p:Phase | #{ p1:Phase | p1.next = p } <= 1
@@ -179,7 +176,7 @@ fact oneLast_Phase{
 
 
 // Time
-// Enfoces facts regarding the time
+// Enforces a strictly ordered single chain of Times
 fact noCircle_Time{
 	no t: Time | t in t.^next
 }
@@ -189,18 +186,25 @@ fact noTimeLone{
 fact citizenOfRepresentingCountry {
 	all a:Athlete | all t: Team | a in t.member => t.represents in a.citizenOf 
 }
+// TODO: why not working
 fact noLocationUsedConcurrently{
-	all disj p0,p1:Performance | p0.location = p1.location => isBefore[p0.stopTime, p1.startTime] 
+//	all disj p0,p1:Performance | p0.location = p1.location => isBefore[p0.stopTime, p1.startTime] 
 }
+// TODO: why not working
 fact noTeamUsedConcurrently {
-	all disj p0,p1:Performance | all t: Team | t in p0.teams && t in p1.teams => isBefore[p0.stopTime, p1.startTime]
+//	all disj p0,p1:Performance | all t: Team | t in p0.teams && t in p1.teams => isBefore[p0.stopTime, p1.startTime]
 }
 
-// No Instance found, Too big of a model or to restrictive
+
+// Ordering
+
+// No Instance found, Too big of a model or to restrictive?
+// Stop time strictly after start time
 fact notSameStartAndStopTimeForPerformance {
 	 all p:Performance | isBefore[p.startTime, p.stopTime] 
 }
 
+// all performances of one phase must end before performances of following phase can start
 fact phasePerformanceOrder {
 	all disj p1, p2: Phase | all disj prf1, prf2: Performance | 
 		phaseIsBefore[p1, p2] && prf1 in p1.containsPerformance && prf2 in p2.containsPerformance
@@ -238,16 +242,17 @@ fact equalScoreEqualMedal { // What for answer maybe not need for us b.c. differ
 }
 
 //Athletes
-// Enfoces facts regarding the athletes
 fact noAthleteInTwoCountriesTeams {
 	no a:Athlete | some disj t1, t2:Team | a in t1.member && a in t2.member && t1.represents != t2.represents
 }
+
+// TODO: why not working
 fact noAthleteInTwoTeamsPerEvent {
-	no a:Athlete | some disj t1, t2:Team | a in t1.member && a in t2.member && (t1.participatesIn & t2.participatesIn) = none
+	// There is no athlete for that ( there are two different teams that participate in the same event ) and the athlete is part of both teams
+//	no a:Athlete | some disj t1, t2:Team | a in t1.member && a in t2.member && (t1.participatesIn & t2.participatesIn) != none
 }
 
 // Teams
-// Enfoces facts regarding the teams
 fact noTeamsInDifferentDisciplines {
 	all d1, d2: Discipline | all t: Team | teamInDiscipline[t, d1] && teamInDiscipline[t, d2] => d1 = d2
 }
@@ -256,22 +261,22 @@ fact onlyThreeTeamsPerDisciplinePerCountry {
 	all c: Country | all d: Discipline | #{ t: Team | c in t.represents && teamInDiscipline[t, d] } <= 3
 }
 
-//Score
-// Enfoces facts regarding the score
-fact noScoreWOPerformance{
-	all s:Score | some p:Performance | p.score = s
+fact SameParticipantsInEventAndPerformance {
+	all e: Event | all p: Phase | p in e.containsPhase => ( all t: p.containsPerformance.teams | e in t.participatesIn )  
 }
 
-fact winnerOfLastPhaseGetsGold{ //TODO
-/*	all t:Team | all p:Phase | all s:Score | one g:GoldMedal | #{p.next}=0 && t in getPerformances[p].teams 
-	&& s in getPerformances[p].score && s.score >= getPerformances[p].score.score&& t in s.forTeam => t in g.forTeam*/
-}
 
 
 
 // For testing
 fact testLocationSharing { // SLOWING DOWN ENORMOUSLY // OVERRESTRICTED SOMEWHERE ??
-	some disj p1,p2:Performance | p1.location = p2.location
+//	some disj p1,p2:Performance | p1.location = p2.location
+}
+fact testTeamSharing {
+//	some disj p1,p2:Performance | p1.teams & p2.teams != none
+}
+fact testAthleteSharing {
+//	some disj t1, t2: Team | t1.member & t2.member != none
 }
 fact {
 //	all a:Athlete | some disj t1, t2: Team | a in t1.member && a in t2.member
@@ -286,19 +291,19 @@ fact {
 
 
 
-/* 
-
+/* ========================
 		Figure Skating 
-
+*/
 
 //Signatures required for the specific part
 one sig FigureSkating extends Discipline {}
 //{ #FigureSkating <= 1}
 
-//one ?? correct
 one sig IceDancing extends Event {}
 
 sig ShortProgram extends FigureSkatingPhase {}
+
+sig Pair extends Team {}
 
 abstract sig FigureSkatingPhase extends Phase {
 	participants: some Team
@@ -309,42 +314,24 @@ sig FreeSkatingProgram extends FigureSkatingPhase {}
 sig FigureSkatingScore extends Score{
 	TechScore: one Int,
 	PresScore: one Int
-	
 }
 
-// facts regarding the Ice Dancing pairs
-fact onlyPairsInIceDancing { // use sig instead ?
-	all t:Team | all e:Event | one m:MaleAthlete | one f:FemaleAthlete |  e in IceDancing && e in t.participatesIn 
-	=> #t.member = 2 && m in t.member && f in t.member
+fact DefinePair {
+	all p: Pair | one m:MaleAthlete | one f:FemaleAthlete| m in p.member && f in p.member
 }
-fact notTwoInstancesOfSamePair{ //TODO CHECK THIS
-	no disj a1,a2: Athlete | some disj t1,t2:Team | all e:Event | e in IceDancing &&  e in IceDancing && e in t1.participatesIn && e in t2.participatesIn &&
-	a1 in t1.member && a1 in t2.member && a2 in t1.member && a2 in t2.member && t1 != t2
-
-//	all t1,t2:Team| all e:Event | all m:MaleAthlete | all f:FemaleAthlete | e in IceDancing && e in t1.participatesIn && e in t2.participatesIn && //DELETE TODO
-//	m in t1.member && m in t2.member && f in t1.member && f in t2.member => t1 = t2
-
-//	all m:MaleAthlete | all f:FemaleAthlete |  all e:Event  | #{t:Team | m in t.member && f in t.member &&  e in IceDancing && e in t.participatesIn} = 1
-}
-
-
 // Enforces that IceDancing events are only held in the figure skating discipline
 fact IceDancingOnlyInFigureSkating{	
 	{IceDancing} = FigureSkating.containsEvent
 }
 
-// impled by IceDancingOnlyInOneDisciplinem and onlyThreeTeamsPerDisciplinePerCountry //DELETE TODO
-fact OnlyThreeTeamsPerCountry{
-//	all e:Event | all t:Team | all c:Country | c in t.represents && e in t.participatesIn && e in IceDancing 
-}
-
 // Enforces constraint regarding the free and short program (i.e. phases)
 fact TwentyTwoPairsInShortProgram{ 
- 	all sp:ShortProgram | #{ t:Team | t in sp.participants} = 5 //change to 22 TODO
+// 	all sp:ShortProgram | #{ t:Team | t in sp.participants} = 5 //change to 22 TODO
 }
 fact SixteenPairsInFreeSkatingProgram {
-	all f: FreeSkatingProgram | # { t: Team | t in f.participants } < 5 // change to 16 TODO
+//	all f: FreeSkatingProgram | # { t: Team | t in f.participants } < 5 // change to 16 TODO
 }
+
 
 fact oneShortOneFreePerIceEvent {
 	all i: IceDancing | one s: ShortProgram | one f: FreeSkatingProgram | s in i.containsPhase && f in i.containsPhase
@@ -364,39 +351,42 @@ fact FreeSkatingParticipantsSubsetOfShortProgram {
 	all s: ShortProgram | all f: FreeSkatingProgram | f in s.next => f.participants in s.participants  
 }
 
+fact onlyPairsInIceDancing {
+	all t: Team | IceDancing in t.participatesIn <=> t in Pair
+}
+
+fact samePhaseSameLocation{
+	all p:FigureSkatingPhase | #{p.containsPerformance.location} = 1
+}
+
 
 // FS Score
 // Enforces the FigureSkating score constraints
-fact allScoresOfIceDancingAreTechOrPres{
-	all s:Score | all p:Performance|(p in ShortProgram.containsPerformance || p in FreeSkatingProgram.containsPerformance) && s = p.score
-	=> s in FigureSkatingScore
-}
-fact TechAndPresScoreOnlyForFS{ // inverse of top
-	all s:Score | all p:Performance| not (p in ShortProgram.containsPerformance || p in FreeSkatingProgram.containsPerformance) && s = p.score
-	=> not( s in FigureSkatingScore)
-}
-fact TechScorePresScoreMax6{
-	all s:FigureSkatingScore | 0 <= s.TechScore && s.TechScore <= 6 && 0 <= s.PresScore && s.PresScore <= 6
+fact FigureScatingScoreForIceDancing {
+	all p:Performance | p in FigureSkatingPhase.containsPerformance <=> p.score in FigureSkatingScore 
 }
 
-fact overallFSScore{
-	all s:FigureSkatingScore| s.score = plus [s.TechScore ][ s.PresScore]
+fact TechScorePresScoreBetween0And6{
+	all s:FigureSkatingScore | (0 <= s.TechScore && s.TechScore <= 6) && (0 <= s.PresScore && s.PresScore <= 6)
 }
 
-*/
+fun FS_fold [s: FigureSkatingScore]: Int { plus [s.TechScore, s.PresScore] }
+pred FS_better[s1 , s2 : FigureSkatingScore] { FS_fold[s1] > FS_fold[s2] }
+pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] }
 
-// maybe good idea to make fact TODO
-assert SameParticipantsInEventAndPerformance {
-	all e: Event | all p: Phase | p in e.containsPhase => ( all t: p.containsPerformance.teams | e in t.participatesIn )  
-}
-
+fun FS_Performance_Winner
 
 pred show { //EVENT HAS TO BE >1
-//	#Event = 3
+	#Discipline = 2 &&
+	#Event = 2 &&
+	#Athlete > 2// &&
+//	#Team < 5 &&
+//	#Phase = 1
 //	#Location < 5
 //	#Time > 1 &&
-//	#Performance < 5
-//	#Discipline = 1
+	#Performance < 7
+//	some p1, p2: Performance | isBefore[p2.startTime, p1.stopTime] && p1.startTime != p2.startTime
+	some p:FigureSkatingPhase | #p.containsPerformance > 1
 }
 
 run show for 10
