@@ -383,6 +383,10 @@ fun FS_Phase_first_i_Places [i: Int, f: FigureSkatingPhase]: set Team {
 	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[s, (t.participatesIn & f.containsPerformance).score]  } < i }
 }
 
+fun FS_Phase_first_i_Teams [i: Int, f: FigureSkatingPhase]: set Teams {
+	{ t: f.participants | some t: Int | #{FS_Phase_first_i_Places[t, f] = t t < 16 }}
+}
+
 //check if teams are not in the same phase twice
 
 pred show { //EVENT HAS TO BE >1
