@@ -171,6 +171,8 @@ fact oneLast_Score {
 	all p:Phase | one s:Score | s in p.containsPerformance.score && no s.betterEqual
 }
 
+
+
 // Phases
 // Makes chains of phases per Event
 fact noCircle_Phases {
@@ -317,15 +319,14 @@ one sig FigureSkating extends Discipline {}
 
 one sig IceDancing extends Event {}
 
-sig ShortProgram extends FigureSkatingPhase {}
-
-sig Pair extends Team {}
-
 abstract sig FigureSkatingPhase extends Phase {
 	participants: some Team
 }
 
+sig ShortProgram extends FigureSkatingPhase {}
 sig FreeSkatingProgram extends FigureSkatingPhase {}
+
+sig Pair extends Team {}
 
 sig FigureSkatingScore extends Score{
 	TechScore: one Int,
@@ -335,6 +336,7 @@ sig FigureSkatingScore extends Score{
 fact DefinePair {
 	all p: Pair | one m:MaleAthlete | one f:FemaleAthlete| m in p.member && f in p.member
 }
+
 // Enforces that IceDancing events are only held in the figure skating discipline
 fact IceDancingOnlyInFigureSkating{	
 	{IceDancing} = FigureSkating.containsEvent
@@ -342,10 +344,10 @@ fact IceDancingOnlyInFigureSkating{
 
 // Enforces constraint regarding the free and short program (i.e. phases)
 fact TwentyTwoPairsInShortProgram{ 
-// 	all sp:ShortProgram | #{ t:Team | t in sp.participants} = 5 //change to 22 TODO
+ 	all sp:ShortProgram | #{ t:Team | t in sp.participants} = 5 //change to 22 TODO
 }
 fact SixteenPairsInFreeSkatingProgram {
-//	all f: FreeSkatingProgram | # { t: Team | t in f.participants } < 5 // change to 16 TODO
+	all f: FreeSkatingProgram | # { t: Team | t in f.participants } < 5// change to 16 TODO
 }
 
 
@@ -357,12 +359,14 @@ fact ShortAndFreeOnlyForIceDancing{
 	all p:Phase | all i:IceDancing |  not (p in i.containsPhase) =>  not (p in FreeSkatingProgram || p in ShortProgram)
 }
 fact ShortBeforeFree {
-	no f: FreeSkatingProgram | some s: ShortProgram | s in f.next
+	all f: FreeSkatingProgram | all s: ShortProgram | f in s.next
 }
+
 fact SameParticipantsInPhaseAndPerformance{
 	all p: FigureSkatingPhase | p.containsPerformance.teams = p.participants
 }
 
+//implied thorugh best 16
 fact FreeSkatingParticipantsSubsetOfShortProgram {
 	all s: ShortProgram | all f: FreeSkatingProgram | f in s.next => f.participants in s.participants  
 }
@@ -373,6 +377,13 @@ fact onlyPairsInIceDancing {
 
 fact samePhaseSameLocation{
 	all p:FigureSkatingPhase | #{p.containsPerformance.location} = 1
+}
+fact noPhaseAfterFree{ //NEW
+	all f:FreeSkatingProgram| no f.next
+}
+fact onlyFSPhasesForIceDancing{ //NEW
+	all i:IceDancing| all p:Phase | p in i.containsPhase =>  p in FigureSkatingPhase 
+	
 }
 
 
@@ -389,9 +400,28 @@ fact TechScorePresScoreBetween0And6{
 fact RightOrderingScore {
 	all disj s1, s2: FigureSkatingScore | s2 in s1.betterEqual => FS_better[s1, s2] || FS_equal[s1, s2]
 }
+
 fact someDifferentScores {
 	some disj s1, s2: FigureSkatingScore | not FS_equal[s1, s2]
 }
+
+fact best16FreeSkating{
+	all f: FreeSkatingProgram | all s:ShortProgram |  s.next = f  => get16BestForPhase[s] = {f.containsPerformance.teams} 
+}
+
+fact onePerformancePerTeam{ //NEW
+	all p:FigureSkatingPhase| all disj t1, t2:Team| t1 in p.containsPerformance.teams && t2 in p.containsPerformance.teams
+	=> performanceForPhaseAndTeam[p,t1] != performanceForPhaseAndTeam[p,t2]
+}
+
+fun get16BestForPhase[p: FigureSkatingPhase]: set Team {//NEW
+	{t:Team | t in p.containsPerformance.teams && #{performanceForPhaseAndTeam[p,t].score.^betterEqual} >= 2}
+}
+
+fun performanceForPhaseAndTeam[p:FigureSkatingPhase, t:Team]:one Performance{//NEW
+	{pe:Performance | pe in p.containsPerformance && t in pe.teams}
+}
+
 
 fun FS_fold [s: FigureSkatingScore]: Int { plus [s.TechScore, s.PresScore] }
 
@@ -413,15 +443,15 @@ pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] && s1.Tec
 //check if teams are not in the same phase twice
 
 pred show { //EVENT HAS TO BE >1
-	#Discipline = 2 &&
-	#Event = 2 &&
-	#Athlete > 2// &&
+//	#Discipline = 2 &&
+//	#Event = 2 &&
+	//#Athlete > 2// &&
 //	#Team < 5 &&
 //	#Phase = 1
 //	#Location < 5
 //	#Time > 1 &&
 
-	#Performance < 7
+//	#Performance < 7
 //	some p1, p2: Performance | isBefore[p2.startTime, p1.stopTime] && p1.startTime != p2.startTime
 	some p:FigureSkatingPhase | #p.containsPerformance > 1
 }
