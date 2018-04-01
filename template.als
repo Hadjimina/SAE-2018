@@ -138,21 +138,6 @@ fact minOnePerformancePerTeam {
 }
 
 
-
-/* was already implied //DELETE ? TODO
-assert minThreeMedalsPerEvent {
-	all e:Event | #{ m: Medal | e in m.forEvent } >= 3
-}
-check minThreeMedalsPerEvent
-*/
-
-/* don't need? //DELETE ? TODO
-fact maxOneTimeAfterOrBeforeTime{
-	all disj t0, t1 : Time | t0.next = t1 => #{t0} <= 1 
-}
-check maxOneTimeAfterOrBeforeTime
-*/
-
 // Makes chains of Scores per Phase
 fact noCircle_Score {
 	all s: Score | s not in s.^betterEqual
@@ -248,9 +233,6 @@ fact MedalsForTeamsInEvent {
 }
 fact onlyOneMedalperTeamEvent {
 	all e: Event | all t: Team | lone m:Medal | e in m.forEvent && e in t.participatesIn && t in m.forTeam
-}
-fact equalScoreEqualMedal { // What for answer maybe not need for us b.c. different score implementation in figure skating //TODO
-//	all e: Performance | all disj t1, t2: Team | t1 in e.teams && t2 in e.teams && t1.score.value = t2.score.value 
 }
 
 //Athletes
