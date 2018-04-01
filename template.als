@@ -409,13 +409,20 @@ fact best16FreeSkating{
 	all f: FreeSkatingProgram | all s:ShortProgram |  s.next = f  => get16BestForPhase[s] = {f.containsPerformance.teams} 
 }
 
-fact onePerformancePerTeam{ //NEW
+fact onePerformancePerTeam{ //NEW sensible?
 	all p:FigureSkatingPhase| all disj t1, t2:Team| t1 in p.containsPerformance.teams && t2 in p.containsPerformance.teams
 	=> performanceForPhaseAndTeam[p,t1] != performanceForPhaseAndTeam[p,t2]
 }
+fact oneTeamPerFSPerformance{//NEW sensible?
+	all p:FigureSkatingPhase | all per:Performance | per in p.containsPerformance => #{per.teams} = 1
+}
+fact noTeamInTwoPerformancesOfSameFSPhase{
+	all t:Team | all disj p1, p2:Performance | all p:FigureSkatingPhase | p1 in p.containsPerformance && p2 in p.containsPerformance 
+	=> not (t in  p1.teams && t in  p2.teams)
+}
 
 fun get16BestForPhase[p: FigureSkatingPhase]: set Team {//NEW
-	{t:Team | t in p.containsPerformance.teams && #{performanceForPhaseAndTeam[p,t].score.^betterEqual} >= 2}
+	{t:Team | t in p.containsPerformance.teams && #{performanceForPhaseAndTeam[p,t].score.^betterEqual} >= 2} //TODO change 2 to 6 (b.c. 22-16 = 6)
 }
 
 fun performanceForPhaseAndTeam[p:FigureSkatingPhase, t:Team]:one Performance{//NEW
