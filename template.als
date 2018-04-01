@@ -36,7 +36,7 @@ sig Score {
 sig Location { }
 
 sig Time {
-	next: lone Time /
+	next: lone Time 
 }
 
 sig Team { 
@@ -398,9 +398,7 @@ fact FigureScatingScoreForIceDancing {
 fact TechScorePresScoreBetween0And6{
 	all s:FigureSkatingScore | (0 <= s.TechScore && s.TechScore <= 6) && (0 <= s.PresScore && s.PresScore <= 6)
 }
-fact medalForFS{
-	all p: 
-}
+
 fact RightOrderingScore {
 	all disj s1, s2: FigureSkatingScore | s2 in s1.betterEqual => FS_better[s1, s2] || FS_equal[s1, s2]
 }
