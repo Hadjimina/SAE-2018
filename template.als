@@ -12,11 +12,10 @@ sig Discipline {
 
 sig Event {
 	containsPhase: some Phase, // not shared
-	//participant: some Team // three or more
 }
 
 sig Phase { 
-	next: lone Phase, // ?
+	next: lone Phase, 
 	containsPerformance: some Performance // not shared
 }
 
@@ -27,7 +26,7 @@ sig Performance {
 	stopTime: one Time, // "
 	score: one Score, // not shared
 	teams: some Team
-	//winner: one Team
+
 } 
 
 sig Score { 
@@ -37,16 +36,13 @@ sig Score {
 sig Location { }
 
 sig Time {
-	next: lone Time // ?
+	next: lone Time /
 }
 
 sig Team { 
 	participatesIn: some Event,
 	represents: one Country,
 	member: some Athlete
-	//probably to delete
-	// ? playsIn: set Performance
-	// won: set Medal,
 }
 
 // Athletes
@@ -215,13 +211,11 @@ fact noTeamUsedConcurrently {
 
 
 // Ordering
-
 // No Instance found, Too big of a model or to restrictive?
 // Stop time strictly after start time
 fact notSameStartAndStopTimeForPerformance {
 	 all p:Performance | isBefore[p.startTime, p.stopTime] 
 }
-
 // all performances of one phase must end before performances of following phase can start
 fact phasePerformanceOrder {
 	all disj p1, p2: Phase | all disj prf1, prf2: Performance | 
@@ -337,6 +331,16 @@ fact DefinePair {
 	all p: Pair | one m:MaleAthlete | one f:FemaleAthlete| m in p.member && f in p.member
 }
 
+//Enforces figures skating performance constraints
+fact onePerformancePerTeam{ //NEW sensible?
+	all p:FigureSkatingPhase| all disj t1, t2:Team| t1 in p.containsPerformance.teams && t2 in p.containsPerformance.teams
+	=> performanceForPhaseAndTeam[p,t1] != performanceForPhaseAndTeam[p,t2]
+}
+fact oneTeamPerFSPerformance{//NEW sensible?
+	all p:FigureSkatingPhase | all per:Performance | per in p.containsPerformance => #{per.teams} = 1
+}
+
+
 // Enforces that IceDancing events are only held in the figure skating discipline
 fact IceDancingOnlyInFigureSkating{	
 	{IceDancing} = FigureSkating.containsEvent
@@ -349,7 +353,6 @@ fact TwentyTwoPairsInShortProgram{
 fact SixteenPairsInFreeSkatingProgram {
 	all f: FreeSkatingProgram | # { t: Team | t in f.participants } < 5// change to 16 TODO
 }
-
 
 fact oneShortOneFreePerIceEvent {
 	all i: IceDancing | one s: ShortProgram | one f: FreeSkatingProgram | s in i.containsPhase && f in i.containsPhase
@@ -383,7 +386,6 @@ fact noPhaseAfterFree{ //NEW
 }
 fact onlyFSPhasesForIceDancing{ //NEW
 	all i:IceDancing| all p:Phase | p in i.containsPhase =>  p in FigureSkatingPhase 
-	
 }
 
 
@@ -396,7 +398,9 @@ fact FigureScatingScoreForIceDancing {
 fact TechScorePresScoreBetween0And6{
 	all s:FigureSkatingScore | (0 <= s.TechScore && s.TechScore <= 6) && (0 <= s.PresScore && s.PresScore <= 6)
 }
-
+fact medalForFS{
+	all p: 
+}
 fact RightOrderingScore {
 	all disj s1, s2: FigureSkatingScore | s2 in s1.betterEqual => FS_better[s1, s2] || FS_equal[s1, s2]
 }
@@ -407,14 +411,6 @@ fact someDifferentScores {
 
 fact best16FreeSkating{
 	all f: FreeSkatingProgram | all s:ShortProgram |  s.next = f  => get16BestForPhase[s] = {f.containsPerformance.teams} 
-}
-
-fact onePerformancePerTeam{ //NEW sensible?
-	all p:FigureSkatingPhase| all disj t1, t2:Team| t1 in p.containsPerformance.teams && t2 in p.containsPerformance.teams
-	=> performanceForPhaseAndTeam[p,t1] != performanceForPhaseAndTeam[p,t2]
-}
-fact oneTeamPerFSPerformance{//NEW sensible?
-	all p:FigureSkatingPhase | all per:Performance | per in p.containsPerformance => #{per.teams} = 1
 }
 fact noTeamInTwoPerformancesOfSameFSPhase{
 	all t:Team | all disj p1, p2:Performance | all p:FigureSkatingPhase | p1 in p.containsPerformance && p2 in p.containsPerformance 
@@ -428,7 +424,6 @@ fun get16BestForPhase[p: FigureSkatingPhase]: set Team {//NEW
 fun performanceForPhaseAndTeam[p:FigureSkatingPhase, t:Team]:one Performance{//NEW
 	{pe:Performance | pe in p.containsPerformance && t in pe.teams}
 }
-
 
 fun FS_fold [s: FigureSkatingScore]: Int { plus [s.TechScore, s.PresScore] }
 
@@ -489,8 +484,9 @@ pred isSilverMedal[m : Medal] { m in SilverMedal }
 // True iff m is a bronze medal.
 pred isBronzeMedal[m: Medal] { m in BronzeMedal }
 
-// True iff t is among the best teams in phase p. TODO
-//pred isAmongBest[t: Team, p: Phase] { ... }
+// True iff t is among the best teams in phase p. 
+// i.e. is in top 16 ??? 
+pred isAmongBest[t: Team, p: Phase] {t in get16BestForPhase[p]} //PMH not tested
 
 /*
  * Functions
@@ -527,6 +523,6 @@ fun getParticipants[p: Performance] : set Team { p.teams }
 // Returns all the athletes which belong to the team t.
 fun getMembers[t: Team] : set Athlete { t.member }
 
-// Returns the team which won the medal m. TODO
-//fun getWinner[m: Medal] : Team { ... }
+// Returns the team which won the medal m. 
+fun getWinner[m: Medal] : Team { m.forTeam }//PMH not tested
 
