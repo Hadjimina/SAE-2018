@@ -262,6 +262,7 @@ fact SameParticipantsInEventAndPerformance {
 
 
 
+
 // For testing
 fact testLocationSharing { // SLOWING DOWN ENORMOUSLY // OVERRESTRICTED SOMEWHERE ??
 //	some disj p1,p2:Performance | p1.location = p2.location
@@ -390,7 +391,7 @@ fact someDifferentScores {
 }
 
 fact best16FreeSkating{
-	all f: FreeSkatingProgram | all s:ShortProgram |  s.next = f  => get16BestForPhase[s] = {f.containsPerformance.teams} 
+//	all f: FreeSkatingProgram | all s:ShortProgram |  s.next = f  => get16BestForPhase[s] = {f.containsPerformance.teams} 
 }
 fact noTeamInTwoPerformancesOfSameFSPhase{
 	all t:Team | all disj p1, p2:Performance | all p:FigureSkatingPhase | p1 in p.containsPerformance && p2 in p.containsPerformance 
@@ -398,7 +399,7 @@ fact noTeamInTwoPerformancesOfSameFSPhase{
 }
 
 fun get16BestForPhase[p: FigureSkatingPhase]: set Team {//NEW
-	{t:Team | t in p.containsPerformance.teams && #{performanceForPhaseAndTeam[p,t].score.^betterEqual} >= 2} //TODO change 2 to 6 (b.c. 22-16 = 6)
+	{t:Team | t in p.containsPerformance.teams && #{performanceForPhaseAndTeam[p,t].score.^betterEqual} >= 3} //TODO change 2 to 6 (b.c. 22-16 = 6)
 }
 
 fun performanceForPhaseAndTeam[p:FigureSkatingPhase, t:Team]:one Performance{//NEW
@@ -411,12 +412,100 @@ pred FS_better[s1 , s2 : FigureSkatingScore] { (FS_fold[s1] > FS_fold[s2]) || (F
 
 pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] && s1.TechScore = s2.TechScore  }
 
+--Works but Slow a bit
+fact reverseOrderInFreeAsInShort{ //NEW
+--	all s:ShortProgram | all f:FreeSkatingProgram| all disj t1,t2:Team | s.next = f && t1 in s.containsPerformance.teams && t1 in f.containsPerformance.teams
+--	&& t2 in s.containsPerformance.teams && t2 in f.containsPerformance.teams && isBefore[performanceForPhaseAndTeam[s,t1].startTime,performanceForPhaseAndTeam[s,t2].startTime]
+--	=> isBefore[performanceForPhaseAndTeam[f,t2].startTime,performanceForPhaseAndTeam[f,t1].startTime]
+}
+
 //fun FS_Phase_Best [i: Int, f: FigureSkatingPhase]: set Team {
 //	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[(t.participatesIn & f.containsPerformance).score, s]  } >= i }
 //}
-//fun FS_Phase_first_i_Places [i: Int, f: FigureSkatingPhase]: set Team {
-//	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[s, (t.participatesIn & f.containsPerformance).score]  } < i }
-//}
+fun FS_Phase_first_i_Places [i: Int, f: FigureSkatingPhase]: set Team {
+	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[s, performanceForPhaseAndTeam[f, t].score]  } < i }
+}
+fun GoldCandidates[f: FigureSkatingPhase]: set Team {
+	FS_Phase_first_i_Places[1, f]
+}
+fun SilverCandidates[f: FigureSkatingPhase]: set Team {
+	FS_Phase_first_i_Places[2, f] - GoldCandidates[f]
+}
+fun BronzeCandidates[f: FigureSkatingPhase]: set Team {
+	FS_Phase_first_i_Places[3, f] - GoldCandidates[f] - SilverCandidates[f]
+}
+
+/*
+fact FirstTeamsGoldMedal {
+	all t: Team | t in GoldCandidates[FreeSkatingProgram] <=> (some m: GoldMedal | t in m.forTeam && IceDancing in m.forEvent)
+}
+fact SecondTeamsSilverBronze {
+	all t: Team | t in SilverCandidates[FreeSkatingProgram] <=> (some m: SilverMedal + BronzeMedal | t in m.forTeam && IceDancing in m.forEvent)
+}
+fact ThirdTeamsBronzeOrNothing {
+	all t: Team | t in BronzeCandidates[FreeSkatingProgram] <= (some m: BronzeMedal | t in m.forTeam && IceDancing in m.forEvent)
+}
+*/
+
+fact Medal2{
+//	#GoldCandidates[FreeSkatingProgram] = 1 && #SilverCandidates[FreeSkatingProgram] = 1 && #BronzeCandidates[FreeSkatingProgram] = 1
+//	=> {all g:GoldMedal | t:GoldCandidates[FreeSkatingProgram] |  IceDancing in g.forEvent && t in g.forTeam} &&
+}
+
+pred FS_case1_Medals[] {
+	#{ m: GoldMedal | IceDancing in m.forEvent} = 1 &&
+	#{ m: SilverMedal | IceDancing in m.forEvent} = 1 &&
+	#{ m: BronzeMedal | IceDancing in m.forEvent} >= 1
+}
+pred FS_case2_Medals[] {
+	#{ m: GoldMedal | IceDancing in m.forEvent} = 1 &&
+	#{ m: SilverMedal | IceDancing in m.forEvent} >= 2 &&
+	#{ m: BronzeMedal | IceDancing in m.forEvent} = 0
+}
+pred FS_case3_Medals[] {
+	#{ m: GoldMedal | IceDancing in m.forEvent} = 2 &&
+	#{ m: SilverMedal | IceDancing in m.forEvent} = 0 &&
+	#{ m: BronzeMedal | IceDancing in m.forEvent} >= 1
+}
+pred FS_case4_Medals[] {
+	#{ m: GoldMedal | IceDancing in m.forEvent} >= 3 &&
+	#{ m: SilverMedal | IceDancing in m.forEvent} = 0 &&
+	#{ m: BronzeMedal | IceDancing in m.forEvent} = 0
+}
+
+
+
+fact MedalsForSkating {
+	all e: IceDancing | 
+	//Case 1
+	(FS_case1_Medals[] => (
+			(all m:GoldMedal | IceDancing in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
+			(all m:SilverMedal | IceDancing in m.forEvent <=> m.forTeam in SilverCandidates[FreeSkatingProgram]) &&
+			(all m:BronzeMedal | IceDancing in m.forEvent <=> m.forTeam in BronzeCandidates[FreeSkatingProgram])
+	))
+	&&
+	//Case 2 
+	(FS_case2_Medals[] => (
+			(all m:GoldMedal | e in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
+			(all m:SilverMedal | e in m.forEvent <=> m.forTeam in SilverCandidates[FreeSkatingProgram]) &&
+			(no m:BronzeMedal | e in m.forEvent)
+	))
+	&&
+	//Case 3
+	(FS_case3_Medals[] => (
+			(all m:GoldMedal | e in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
+			(no m:SilverMedal | e in m.forEvent) &&
+			(all m:BronzeMedal | e in m.forEvent <=> m.forTeam in SilverCandidates[FreeSkatingProgram])
+	))
+	&&
+	//Case 4
+	(FS_case4_Medals[] => (
+			(all m:GoldMedal | e in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
+			(no m:SilverMedal | e in m.forEvent) &&
+			(no m:BronzeMedal | e in m.forEvent)
+	))	
+}
+
 
 //fun FS_Phase_first_i_Teams [i: Int, f: FigureSkatingPhase]: set Team {
 //	{ t: f.participants | some t: Int | #{FS_Phase_first_i_Places[t, f] = t t < 16 }}
@@ -425,17 +514,17 @@ pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] && s1.Tec
 //check if teams are not in the same phase twice
 
 pred show { //EVENT HAS TO BE >1
-//	#Discipline = 2 &&
-//	#Event = 2 &&
+	#Discipline = 1 &&
+	#Event = 1 &&
 	//#Athlete > 2// &&
-//	#Team < 5 &&
+	#Team <= 5 &&
 //	#Phase = 1
 //	#Location < 5
 //	#Time > 1 &&
 
 //	#Performance < 7
 //	some p1, p2: Performance | isBefore[p2.startTime, p1.stopTime] && p1.startTime != p2.startTime
-	some p:FigureSkatingPhase | #p.containsPerformance > 1
+	some p:FigureSkatingPhase | #p.containsPerformance > 2
 }
 
 run show for 10
