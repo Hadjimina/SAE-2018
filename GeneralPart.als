@@ -237,211 +237,7 @@ fact SameParticipantsInEventAndPerformance {
 
 
 
-/* ========================
-		Figure Skating 
 */
-
-
-//Signatures required for the specific part
-one sig FigureSkating extends Discipline {}
-//{ #FigureSkating <= 1}
-
-one sig IceDancing extends Event {}
-
-abstract sig FigureSkatingPhase extends Phase {
-	participants: some Team
-}
-
-sig ShortProgram extends FigureSkatingPhase {}
-sig FreeSkatingProgram extends FigureSkatingPhase {}
-
-sig Pair extends Team {}
-
-sig FigureSkatingScore extends Score{
-	TechScore: one Int,
-	PresScore: one Int
-}
-
-fact DefinePair {
-	all p: Pair | one m:MaleAthlete | one f:FemaleAthlete| m in p.member && f in p.member
-}
-
-//Enforces figures skating performance constraints
-fact onePerformancePerTeam{ //NEW sensible?
-	all p:FigureSkatingPhase| all disj t1, t2:Team| t1 in p.containsPerformance.teams && t2 in p.containsPerformance.teams
-	=> performanceForPhaseAndTeam[p,t1] != performanceForPhaseAndTeam[p,t2]
-}
-fact oneTeamPerFSPerformance{//NEW sensible?
-	all p:FigureSkatingPhase | all per:Performance | per in p.containsPerformance => #{per.teams} = 1
-}
-
-
-// Enforces that IceDancing events are only held in the figure skating discipline
-fact IceDancingOnlyInFigureSkating{	
-	{IceDancing} = FigureSkating.containsEvent
-}
-
-// Enforces constraint regarding the free and short program (i.e. phases)
-fact TwentyTwoPairsInShortProgram{ 
- 	all sp:ShortProgram | #{ t:Team | t in sp.participants} = 5 //change to 22 TODO
-}
-fact SixteenPairsInFreeSkatingProgram {
-	all f: FreeSkatingProgram | # { t: Team | t in f.participants } < 5// change to 16 TODO
-}
-
-fact oneShortOneFreePerIceEvent {
-	all i: IceDancing | one s: ShortProgram | one f: FreeSkatingProgram | s in i.containsPhase && f in i.containsPhase
-}
-// only correct because of one sig IceDancing Constraint
-fact ShortAndFreeOnlyForIceDancing{  
-	all p:Phase | all i:IceDancing |  not (p in i.containsPhase) =>  not (p in FreeSkatingProgram || p in ShortProgram)
-}
-fact ShortBeforeFree {
-	all f: FreeSkatingProgram | all s: ShortProgram | f in s.next
-}
-
-fact SameParticipantsInPhaseAndPerformance{
-	all p: FigureSkatingPhase | p.containsPerformance.teams = p.participants
-}
-
-//implied thorugh best 16
-fact FreeSkatingParticipantsSubsetOfShortProgram {
-	all s: ShortProgram | all f: FreeSkatingProgram | f in s.next => f.participants in s.participants  
-}
-
-fact onlyPairsInIceDancing {
-	all t: Team | IceDancing in t.participatesIn <=> t in Pair
-}
-
-fact samePhaseSameLocation{
-	all p:FigureSkatingPhase | #{p.containsPerformance.location} = 1
-}
-fact noPhaseAfterFree{
-	all f:FreeSkatingProgram| no f.next
-}
-fact onlyFSPhasesForIceDancing{
-	all i:IceDancing| all p:Phase | p in i.containsPhase =>  p in FigureSkatingPhase 
-}
-
-
-// FS Score
-// Enforces the FigureSkating score constraints
-fact FigureScatingScoreForIceDancing {
-	all p:Performance | p in FigureSkatingPhase.containsPerformance <=> p.score in FigureSkatingScore 
-}
-
-fact TechScorePresScoreBetween0And6{
-	all s:FigureSkatingScore | (0 <= s.TechScore && s.TechScore <= 6) && (0 <= s.PresScore && s.PresScore <= 6)
-}
-
-fact RightOrderingScore {
-	all disj s1, s2: FigureSkatingScore | s2 in s1.betterEqual => FS_better[s1, s2] || FS_equal[s1, s2]
-}
-
-fact someDifferentScores {
-	some disj s1, s2: FigureSkatingScore | not FS_equal[s1, s2]
-}
-
-fact best16FreeSkating{
-//	all f: FreeSkatingProgram | all s:ShortProgram |  s.next = f  => get16BestForPhase[s] = {f.containsPerformance.teams} 
-}
-fact noTeamInTwoPerformancesOfSameFSPhase{
-	all t:Team | all disj p1, p2:Performance | all p:FigureSkatingPhase | p1 in p.containsPerformance && p2 in p.containsPerformance 
-	=> not (t in  p1.teams && t in  p2.teams)
-}
-
-fun get16BestForPhase[p: FigureSkatingPhase]: set Team {//NEW
-	{t:Team | t in p.containsPerformance.teams && #{performanceForPhaseAndTeam[p,t].score.^betterEqual} >= 3} //TODO change 2 to 6 (b.c. 22-16 = 6)
-}
-
-fun performanceForPhaseAndTeam[p:FigureSkatingPhase, t:Team]:one Performance{
-	{pe:Performance | pe in p.containsPerformance && t in pe.teams}
-}
-
-fun FS_fold [s: FigureSkatingScore]: Int { plus [s.TechScore, s.PresScore] }
-
-pred FS_better[s1 , s2 : FigureSkatingScore] { (FS_fold[s1] > FS_fold[s2]) || (FS_fold[s1] = FS_fold[s2] && s1.TechScore > s2.TechScore) }
-
-pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] && s1.TechScore = s2.TechScore  }
-
---Works but Slow a bit
-fact reverseOrderInFreeAsInShort{ //NEW
-	all s:ShortProgram | all f:FreeSkatingProgram| all disj t1,t2:Team | s.next = f && t1 in s.containsPerformance.teams && t1 in f.containsPerformance.teams
-	&& t2 in s.containsPerformance.teams && t2 in f.containsPerformance.teams && isBefore[performanceForPhaseAndTeam[s,t1].startTime,performanceForPhaseAndTeam[s,t2].startTime]
-	=> isBefore[performanceForPhaseAndTeam[f,t2].startTime,performanceForPhaseAndTeam[f,t1].startTime]
-}
-
-
-fun FS_Phase_first_i_Places [i: Int, f: FigureSkatingPhase]: set Team {
-	{ t: f.participants | #{ s: f.containsPerformance.score | FS_better[s, performanceForPhaseAndTeam[f, t].score]  } < i }
-}
-fun GoldCandidates[f: FigureSkatingPhase]: set Team {
-	FS_Phase_first_i_Places[1, f]
-}
-fun SilverCandidates[f: FigureSkatingPhase]: set Team {
-	FS_Phase_first_i_Places[2, f] - GoldCandidates[f]
-}
-fun BronzeCandidates[f: FigureSkatingPhase]: set Team {
-	FS_Phase_first_i_Places[3, f] - GoldCandidates[f] - SilverCandidates[f]
-}
-
-
-pred FS_case1_Medals[] {
-	#{ m: GoldMedal | IceDancing in m.forEvent} = 1 &&
-	#{ m: SilverMedal | IceDancing in m.forEvent} = 1 &&
-	#{ m: BronzeMedal | IceDancing in m.forEvent} >= 1
-}
-pred FS_case2_Medals[] {
-	#{ m: GoldMedal | IceDancing in m.forEvent} = 1 &&
-	#{ m: SilverMedal | IceDancing in m.forEvent} >= 2 &&
-	#{ m: BronzeMedal | IceDancing in m.forEvent} = 0
-}
-pred FS_case3_Medals[] {
-	#{ m: GoldMedal | IceDancing in m.forEvent} = 2 &&
-	#{ m: SilverMedal | IceDancing in m.forEvent} = 0 &&
-	#{ m: BronzeMedal | IceDancing in m.forEvent} >= 1
-}
-pred FS_case4_Medals[] {
-	#{ m: GoldMedal | IceDancing in m.forEvent} >= 3 &&
-	#{ m: SilverMedal | IceDancing in m.forEvent} = 0 &&
-	#{ m: BronzeMedal | IceDancing in m.forEvent} = 0
-}
-
-
-
-fact MedalsForSkating {
-	all e: IceDancing | 
-	//Case 1
-	(FS_case1_Medals[] => (
-			(all m:GoldMedal | IceDancing in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
-			(all m:SilverMedal | IceDancing in m.forEvent <=> m.forTeam in SilverCandidates[FreeSkatingProgram]) &&
-			(all m:BronzeMedal | IceDancing in m.forEvent <=> m.forTeam in BronzeCandidates[FreeSkatingProgram])
-	))
-	&&
-	//Case 2 
-	(FS_case2_Medals[] => (
-			(all m:GoldMedal | e in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
-			(all m:SilverMedal | e in m.forEvent <=> m.forTeam in SilverCandidates[FreeSkatingProgram]) &&
-			(no m:BronzeMedal | e in m.forEvent)
-	))
-	&&
-	//Case 3
-	(FS_case3_Medals[] => (
-			(all m:GoldMedal | e in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
-			(no m:SilverMedal | e in m.forEvent) &&
-			(all m:BronzeMedal | e in m.forEvent <=> m.forTeam in SilverCandidates[FreeSkatingProgram])
-	))
-	&&
-	//Case 4
-	(FS_case4_Medals[] => (
-			(all m:GoldMedal | e in m.forEvent <=> m.forTeam in GoldCandidates[FreeSkatingProgram]) &&
-			(no m:SilverMedal | e in m.forEvent) &&
-			(no m:BronzeMedal | e in m.forEvent)
-	))	
-}
-
-
-
 
 //GENERAL PART
 pred static_instance_1{ // done
@@ -450,9 +246,9 @@ pred static_instance_1{ // done
 	#Time = 4
 }
 
-pred static_instance_2{ // not working, y though ?
-	#Discipline = 2 && (one a:Athlete | all disj d1,d2: Discipline | all disj p1, p2:Performance| p1.stopTime.next = p2.startTime && 
-	p1 in d1.containsEvent.containsPhase.containsPerformance && p2 in d2.containsEvent.containsPhase.containsPerformance &&  a in p1.teams.member && a in p2.teams.member)
+pred static_instance_2{ // not working??
+	(one a:Athlete | all disj d1,d2: Discipline | all disj p1, p2:Performance| p1.stopTime.next = p2.startTime && 
+	p1 in d1.containsEvent.containsPhase.containsPerformance && p2 in d2.containsEvent.containsPhase.containsPerformance &&  a in p1.teams.member && a in p2.teams.member) && #Discipline >= 2
 
 }
 
@@ -461,21 +257,12 @@ pred static_instance_3{ // no instance found but i think this does not work on p
 }
 
 pred static_instance_4{ // no instance found MAYBE on purpose?
-	one a:Athlete | one g1:GoldMedal | one g2:GoldMedal | one d:Discipline | g1 != g2 && a in g1.forTeam.member && a in g2.forTeam.member && {g1.forEvent +  g1.forEvent} in d.containsEvent
-}
-
-//SPECIFIC PART
-pred static_instance_5{
-	one t:Team| one g:GoldMedal |  not isAmongBest[t, ShortProgram] && IceDancing in g.forEvent && t in g.forTeam
-}
-
-pred static_instance_6{ 
-	#{ m: GoldMedal | IceDancing in m.forEvent} = 1 &&
-	#{ m: BronzeMedal | IceDancing in m.forEvent} >= 1
+	one a:Athlete| one disj g1,g2:GoldMedal | a in g1.forTeam.member && a in g2.forTeam.member && {d:Discipline | g1.forEvent in d.containsEvent} = {d:Discipline | g2.forEvent in d.containsEvent}
 }
 
 
-run  static_instance_5 for 10
+
+run  static_instance_1 for 10
 
 /* 
 	OUR Predicates
@@ -502,10 +289,8 @@ pred isSilverMedal[m : Medal] { m in SilverMedal }
 pred isBronzeMedal[m: Medal] { m in BronzeMedal }
 
 // True iff t is among the best teams in phase p. 
-pred isAmongBest[t: Team, p: Phase] { //TODO
-no s:FigureSkatingScore| performanceForPhaseAndTeam[p,t].score in s.^betterEqual //OR 
-// t in get16BestForPhase[p]
-} 
+//N/A since it is stated that this is only used for the specific part
+//pred isAmongBest[t: Team, p: Phase] {} 
 
 /*
  * Functions
