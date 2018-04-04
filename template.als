@@ -170,10 +170,10 @@ fact noTimeLone{
 fact citizenOfRepresentingCountry {
 	all a:Athlete | all t: Team | a in t.member => t.represents in a.citizenOf 
 }
-fact noLocationUsedConcurrently{
+fact noLocationUsedConcurrently{ //SLOW down extremely with specific part
 	all disj p0,p1:Performance | {p0.location} = {p1.location} && isBefore[p0.startTime, p1.startTime] => isBefore[p0.stopTime, p1.startTime]
 }
-fact noTeamUsedConcurrently {
+fact noTeamUsedConcurrently { //SLOW down extremely with specific part
 	all disj p0,p1:Performance | all t: Team | t in p0.teams && t in p1.teams => isBefore[p0.stopTime, p1.startTime]
 }
 
@@ -342,7 +342,7 @@ fact someDifferentScores {
 	some disj s1, s2: FigureSkatingScore | not FS_equal[s1, s2]
 }
 
-fact best16FreeSkating{
+fact best16FreeSkating{ // OVERLY RESTRICTIVE?
 //	all f: FreeSkatingProgram | all s:ShortProgram |  s.next = f  => get16BestForPhase[s] = {f.containsPerformance.teams} 
 }
 fact noTeamInTwoPerformancesOfSameFSPhase{
@@ -364,7 +364,7 @@ pred FS_better[s1 , s2 : FigureSkatingScore] { (FS_fold[s1] > FS_fold[s2]) || (F
 
 pred FS_equal [s1, s2: FigureSkatingScore] { FS_fold[s1] = FS_fold[s2] && s1.TechScore = s2.TechScore  }
 
---Works but Slow a bit
+//SLOW but not tooo slow (doubles time)
 fact reverseOrderInFreeAsInShort{ //NEW
 	all s:ShortProgram | all f:FreeSkatingProgram| all disj t1,t2:Team | s.next = f && t1 in s.containsPerformance.teams && t1 in f.containsPerformance.teams
 	&& t2 in s.containsPerformance.teams && t2 in f.containsPerformance.teams && isBefore[performanceForPhaseAndTeam[s,t1].startTime,performanceForPhaseAndTeam[s,t2].startTime]
@@ -475,7 +475,7 @@ pred static_instance_6{
 }
 
 
-run  static_instance_5 for 10
+run  static_instance_6 for 10
 
 /* 
 	OUR Predicates
@@ -503,8 +503,9 @@ pred isBronzeMedal[m: Medal] { m in BronzeMedal }
 
 // True iff t is among the best teams in phase p. 
 pred isAmongBest[t: Team, p: Phase] { //TODO
-no s:FigureSkatingScore| performanceForPhaseAndTeam[p,t].score in s.^betterEqual //OR 
-// t in get16BestForPhase[p]
+//no s:FigureSkatingScore| performanceForPhaseAndTeam[p,t].score in s.^betterEqual //OR 
+// t in get16BestForPhase[p] //OR
+	#{s:FigureSkatingScore | s in p.containsPerformance.score && s != performanceForPhaseAndTeam[p,t].score && FS_better[s,performanceForPhaseAndTeam[p,t].score]} = 0
 } 
 
 /*
