@@ -109,9 +109,6 @@ fact minOneAthletePerCountry {
 fact minOneTeamPerAthlete {
 	all a:Athlete | #{ t: Team | a in t.member } >= 1
 }
-fact minOneTeamPerAthlete {
-	all a:Athlete | #{ t: Team | a in t.member } >= 1
-}
 fact minOnePerformancePerLocation {
 	all l:Location | some p:Performance | l in p.location
 }
@@ -219,7 +216,7 @@ fact noAthleteInTwoCountriesTeams {
 }
 
 fact noAthleteInTwoTeamsPerEvent {
-	no a:Athlete | some disj t1, t2:Team | a in t1.member && a in t2.member && #{t1.participatesIn & t2.participatesIn} = 0
+	no a:Athlete | some disj t1, t2:Team | a in t1.member && a in t2.member && #{t1.participatesIn & t2.participatesIn} > 0
 }
 
 // Teams
@@ -237,7 +234,7 @@ fact SameParticipantsInEventAndPerformance {
 
 
 
-*/
+
 
 //GENERAL PART
 pred static_instance_1{ // done
@@ -246,23 +243,25 @@ pred static_instance_1{ // done
 	#Time = 4
 }
 
-pred static_instance_2{ // not working??
-	(one a:Athlete | all disj d1,d2: Discipline | all disj p1, p2:Performance| p1.stopTime.next = p2.startTime && 
-	p1 in d1.containsEvent.containsPhase.containsPerformance && p2 in d2.containsEvent.containsPhase.containsPerformance &&  a in p1.teams.member && a in p2.teams.member) && #Discipline >= 2
-
+pred static_instance_2 { 
+	some a:Athlete | some d1: Discipline | some p1, p2: Performance | 
+		p1 in d1.containsEvent.containsPhase.containsPerformance &&
+		p2 not in d1.containsEvent.containsPhase.containsPerformance 
+		&& a in p1.teams.member 
+		&& a in p2.teams.member
+		&& p2.startTime = p1.stopTime.next 
 }
-
-pred static_instance_3{ // no instance found but i think this does not work on purpose
-	one c:Country | all t:Team | c in t.member.citizenOf && #t.participatesIn = 0
+pred static_instance_3{ // instances are easily found
+	some c:Country | no t:Team | c in t.represents
 }
 
 pred static_instance_4{ // no instance found MAYBE on purpose?
-	one a:Athlete| one disj g1,g2:GoldMedal | a in g1.forTeam.member && a in g2.forTeam.member && {d:Discipline | g1.forEvent in d.containsEvent} = {d:Discipline | g2.forEvent in d.containsEvent}
+	some a:Athlete| some disj g1,g2:GoldMedal | a in g1.forTeam.member && a in g2.forTeam.member && {d:Discipline | g1.forEvent in d.containsEvent} = {d:Discipline | g2.forEvent in d.containsEvent}
 }
 
 
 
-run  static_instance_1 for 10
+run  static_instance_4 for 7 // but 1 Country, 2 Discipline, 2 Performance
 
 /* 
 	OUR Predicates
