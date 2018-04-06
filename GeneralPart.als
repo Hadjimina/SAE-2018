@@ -64,7 +64,7 @@ sig BronzeMedal extends Medal {}
 */
 
 // COMPOSITION
-
+/**/
 //Enforces composition relation between Discipline and event
 fact CompositionDisciplineEvent{
 	all disj d1, d2: Discipline | all e: Event | e in d1.containsEvent implies e not in d2.containsEvent
@@ -100,6 +100,7 @@ fact noPerformanceWithoutPhase {
 	MULITPLICITIES
 */
 //Enoforces the multiplicities constraints from the UML model
+
 fact minThreeTeamsPerEvent {
 	all e:Event | #{ t: Team | e in t.participatesIn } >= 3
 }
@@ -234,16 +235,13 @@ fact SameParticipantsInEventAndPerformance {
 
 
 
-
-
 //GENERAL PART
 pred static_instance_1{ // done
 	#Performance = 7 &&
 	#Location = 2 &&
 	#Time = 4
 }
-
-pred static_instance_2 { 
+pred static_instance_2 { //done
 	some a:Athlete | some d1: Discipline | some p1, p2: Performance | 
 		p1 in d1.containsEvent.containsPhase.containsPerformance &&
 		p2 not in d1.containsEvent.containsPhase.containsPerformance 
@@ -251,22 +249,34 @@ pred static_instance_2 {
 		&& a in p2.teams.member
 		&& p2.startTime = p1.stopTime.next 
 }
-pred static_instance_3{ // instances are easily found
+pred static_instance_3{ //done
 	some c:Country | no t:Team | c in t.represents
 }
 
-pred static_instance_4{ // no instance found MAYBE on purpose?
+pred static_instance_4{ //done
 	some a:Athlete| some disj g1,g2:GoldMedal | a in g1.forTeam.member && a in g2.forTeam.member && {d:Discipline | g1.forEvent in d.containsEvent} = {d:Discipline | g2.forEvent in d.containsEvent}
 }
 
+//SPECIFIC PART
+pred static_instance_5{
+	one t:Team| one g:GoldMedal |  not isAmongBest[t, ShortProgram] && IceDancing in g.forEvent && t in g.forTeam
+}
+
+pred static_instance_6{ 
+	#{ m: GoldMedal | IceDancing in m.forEvent} = 1 &&
+	#{ m: BronzeMedal | IceDancing in m.forEvent} >= 1
+}
+
+pred show{
+	one p:Pair | p in FreeSkatingProgram.containsPerformance.teams && p in ShortProgram.containsPerformance.teams && #{ShortProgram.containsPerformance.teams}>=3 &&#{FreeSkatingProgram.containsPerformance.teams}>=1
+}
 
 
-run  static_instance_4 for 7 // but 1 Country, 2 Discipline, 2 Performance
+run  static_instance_4 for 7
 
 /* 
 	OUR Predicates
 */
-
 pred teamInDiscipline[t: Team, d: Discipline] { t.participatesIn & d.containsEvent != none }
 
 
@@ -288,8 +298,10 @@ pred isSilverMedal[m : Medal] { m in SilverMedal }
 pred isBronzeMedal[m: Medal] { m in BronzeMedal }
 
 // True iff t is among the best teams in phase p. 
-//N/A since it is stated that this is only used for the specific part
-//pred isAmongBest[t: Team, p: Phase] {} 
+// N/A since isAmongBest only has to be modeled for the specific part
+/*pred isAmongBest[t: Team, p: Phase] { 
+	#{s:FigureSkatingScore | s in p.containsPerformance.score && s != performanceForPhaseAndTeam[p,t].score && FS_better[s,performanceForPhaseAndTeam[p,t].score]} = 0
+} */
 
 /*
  * Functions
